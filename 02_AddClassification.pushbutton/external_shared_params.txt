@@ -1,0 +1,10 @@
+# This is a Revit shared parameter file.
+# Do not edit manually.
+*META	VERSION	MINVERSION
+*META	2	1
+*GROUP	ID	NAME
+*GROUP	1	External Classification
+*PARAM	GUID	NAME	DATATYPE	DATACATEGORY	GROUP	VISIBLE	DESCRIPTION	USERMODIFIABLE	HIDEWHENNOVALUE
+*PARAM	7b3d2e1d-aaaa-4567-89ab-cdef01234563	ClassificationCodePset	TEXT		1	1	External classification code for Pset	1	0
+*PARAM	7b3d2e1b-aaaa-4567-89ab-cdef01234561	ClassificationName	TEXT		1	1	External classification class name	1	0
+*PARAM	7b3d2e1c-aaaa-4567-89ab-cdef01234562	ClassificationSystem	TEXT		1	1	External classification dictionary	1	0

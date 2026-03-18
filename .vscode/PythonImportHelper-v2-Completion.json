@@ -1,0 +1,219 @@
+[
+    {
+        "label": "Transaction",
+        "importPath": "Autodesk.Revit.DB",
+        "description": "Autodesk.Revit.DB",
+        "isExtraImport": true,
+        "detail": "Autodesk.Revit.DB",
+        "documentation": {}
+    },
+    {
+        "label": "Schema",
+        "importPath": "Autodesk.Revit.DB.ExtensibleStorage",
+        "description": "Autodesk.Revit.DB.ExtensibleStorage",
+        "isExtraImport": true,
+        "detail": "Autodesk.Revit.DB.ExtensibleStorage",
+        "documentation": {}
+    },
+    {
+        "label": "SchemaBuilder",
+        "importPath": "Autodesk.Revit.DB.ExtensibleStorage",
+        "description": "Autodesk.Revit.DB.ExtensibleStorage",
+        "isExtraImport": true,
+        "detail": "Autodesk.Revit.DB.ExtensibleStorage",
+        "documentation": {}
+    },
+    {
+        "label": "Entity",
+        "importPath": "Autodesk.Revit.DB.ExtensibleStorage",
+        "description": "Autodesk.Revit.DB.ExtensibleStorage",
+        "isExtraImport": true,
+        "detail": "Autodesk.Revit.DB.ExtensibleStorage",
+        "documentation": {}
+    },
+    {
+        "label": "AccessLevel",
+        "importPath": "Autodesk.Revit.DB.ExtensibleStorage",
+        "description": "Autodesk.Revit.DB.ExtensibleStorage",
+        "isExtraImport": true,
+        "detail": "Autodesk.Revit.DB.ExtensibleStorage",
+        "documentation": {}
+    },
+    {
+        "label": "forms",
+        "importPath": "pyrevit",
+        "description": "pyrevit",
+        "isExtraImport": true,
+        "detail": "pyrevit",
+        "documentation": {}
+    },
+    {
+        "label": "forms",
+        "importPath": "pyrevit",
+        "description": "pyrevit",
+        "isExtraImport": true,
+        "detail": "pyrevit",
+        "documentation": {}
+    },
+    {
+        "label": "forms",
+        "importPath": "pyrevit",
+        "description": "pyrevit",
+        "isExtraImport": true,
+        "detail": "pyrevit",
+        "documentation": {}
+    },
+    {
+        "label": "clr",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "clr",
+        "description": "clr",
+        "detail": "clr",
+        "documentation": {}
+    },
+    {
+        "label": "System",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "System",
+        "description": "System",
+        "detail": "System",
+        "documentation": {}
+    },
+    {
+        "label": "os",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "os",
+        "description": "os",
+        "detail": "os",
+        "documentation": {}
+    },
+    {
+        "label": "get_or_create_schema",
+        "kind": 2,
+        "importPath": "01_SetURL.pushbutton.script",
+        "description": "01_SetURL.pushbutton.script",
+        "peekOfCode": "def get_or_create_schema():\n    schema = Schema.Lookup(SCHEMA_GUID)\n    if not schema:\n        schema_builder = SchemaBuilder(SCHEMA_GUID)\n        schema_builder.SetSchemaName(SCHEMA_NAME)\n        schema_builder.SetReadAccessLevel(AccessLevel.Public)\n        schema_builder.SetWriteAccessLevel(AccessLevel.Public)\n        # System.String is the correct .NET type for AddSimpleField\n        schema_builder.AddSimpleField(FIELD_NAME, System.String)\n        schema = schema_builder.Finish()",
+        "detail": "01_SetURL.pushbutton.script",
+        "documentation": {}
+    },
+    {
+        "label": "set_url",
+        "kind": 2,
+        "importPath": "01_SetURL.pushbutton.script",
+        "description": "01_SetURL.pushbutton.script",
+        "peekOfCode": "def set_url():\n    url = forms.ask_for_string(\n        get_stored_url(),\n        \"Enter the URL for the External Classification API\"\n    )\n    if url:\n        schema = get_or_create_schema()\n        field = schema.GetField(FIELD_NAME)\n        entity = Entity(schema)\n        entity.Set[System.String](field, url)",
+        "detail": "01_SetURL.pushbutton.script",
+        "documentation": {}
+    },
+    {
+        "label": "__title__",
+        "kind": 5,
+        "importPath": "01_SetURL.pushbutton.script",
+        "description": "01_SetURL.pushbutton.script",
+        "peekOfCode": "__title__ = \"Set URL\"\n__doc__ = \"Set URL for External Classification API\"\nfrom Autodesk.Revit.DB import Transaction\nfrom Autodesk.Revit.DB.ExtensibleStorage import Schema, SchemaBuilder, Entity, AccessLevel\nfrom pyrevit import forms\nimport clr\nclr.AddReference('System')\nimport System\ndoc = __revit__.ActiveUIDocument.Document\nSCHEMA_GUID = System.Guid(\"12345678-1234-1234-1234-1234567890ab\")",
+        "detail": "01_SetURL.pushbutton.script",
+        "documentation": {}
+    },
+    {
+        "label": "__doc__",
+        "kind": 5,
+        "importPath": "01_SetURL.pushbutton.script",
+        "description": "01_SetURL.pushbutton.script",
+        "peekOfCode": "__doc__ = \"Set URL for External Classification API\"\nfrom Autodesk.Revit.DB import Transaction\nfrom Autodesk.Revit.DB.ExtensibleStorage import Schema, SchemaBuilder, Entity, AccessLevel\nfrom pyrevit import forms\nimport clr\nclr.AddReference('System')\nimport System\ndoc = __revit__.ActiveUIDocument.Document\nSCHEMA_GUID = System.Guid(\"12345678-1234-1234-1234-1234567890ab\")\nSCHEMA_NAME = \"DataDictionaryAPI\"",
+        "detail": "01_SetURL.pushbutton.script",
+        "documentation": {}
+    },
+    {
+        "label": "doc",
+        "kind": 5,
+        "importPath": "01_SetURL.pushbutton.script",
+        "description": "01_SetURL.pushbutton.script",
+        "peekOfCode": "doc = __revit__.ActiveUIDocument.Document\nSCHEMA_GUID = System.Guid(\"12345678-1234-1234-1234-1234567890ab\")\nSCHEMA_NAME = \"DataDictionaryAPI\"\nFIELD_NAME = \"APIUrl\"\ndef get_or_create_schema():\n    schema = Schema.Lookup(SCHEMA_GUID)\n    if not schema:\n        schema_builder = SchemaBuilder(SCHEMA_GUID)\n        schema_builder.SetSchemaName(SCHEMA_NAME)\n        schema_builder.SetReadAccessLevel(AccessLevel.Public)",
+        "detail": "01_SetURL.pushbutton.script",
+        "documentation": {}
+    },
+    {
+        "label": "SCHEMA_GUID",
+        "kind": 5,
+        "importPath": "01_SetURL.pushbutton.script",
+        "description": "01_SetURL.pushbutton.script",
+        "peekOfCode": "SCHEMA_GUID = System.Guid(\"12345678-1234-1234-1234-1234567890ab\")\nSCHEMA_NAME = \"DataDictionaryAPI\"\nFIELD_NAME = \"APIUrl\"\ndef get_or_create_schema():\n    schema = Schema.Lookup(SCHEMA_GUID)\n    if not schema:\n        schema_builder = SchemaBuilder(SCHEMA_GUID)\n        schema_builder.SetSchemaName(SCHEMA_NAME)\n        schema_builder.SetReadAccessLevel(AccessLevel.Public)\n        schema_builder.SetWriteAccessLevel(AccessLevel.Public)",
+        "detail": "01_SetURL.pushbutton.script",
+        "documentation": {}
+    },
+    {
+        "label": "SCHEMA_NAME",
+        "kind": 5,
+        "importPath": "01_SetURL.pushbutton.script",
+        "description": "01_SetURL.pushbutton.script",
+        "peekOfCode": "SCHEMA_NAME = \"DataDictionaryAPI\"\nFIELD_NAME = \"APIUrl\"\ndef get_or_create_schema():\n    schema = Schema.Lookup(SCHEMA_GUID)\n    if not schema:\n        schema_builder = SchemaBuilder(SCHEMA_GUID)\n        schema_builder.SetSchemaName(SCHEMA_NAME)\n        schema_builder.SetReadAccessLevel(AccessLevel.Public)\n        schema_builder.SetWriteAccessLevel(AccessLevel.Public)\n        # System.String is the correct .NET type for AddSimpleField",
+        "detail": "01_SetURL.pushbutton.script",
+        "documentation": {}
+    },
+    {
+        "label": "FIELD_NAME",
+        "kind": 5,
+        "importPath": "01_SetURL.pushbutton.script",
+        "description": "01_SetURL.pushbutton.script",
+        "peekOfCode": "FIELD_NAME = \"APIUrl\"\ndef get_or_create_schema():\n    schema = Schema.Lookup(SCHEMA_GUID)\n    if not schema:\n        schema_builder = SchemaBuilder(SCHEMA_GUID)\n        schema_builder.SetSchemaName(SCHEMA_NAME)\n        schema_builder.SetReadAccessLevel(AccessLevel.Public)\n        schema_builder.SetWriteAccessLevel(AccessLevel.Public)\n        # System.String is the correct .NET type for AddSimpleField\n        schema_builder.AddSimpleField(FIELD_NAME, System.String)",
+        "detail": "01_SetURL.pushbutton.script",
+        "documentation": {}
+    },
+    {
+        "label": "main",
+        "kind": 2,
+        "importPath": "02_AddClassification.pushbutton.script",
+        "description": "02_AddClassification.pushbutton.script",
+        "peekOfCode": "def main():\n    import clr\n    clr.AddReference('System')\n    import System\n    import os\n    import json as _json\n    from Autodesk.Revit.DB import Transaction, FilteredElementCollector, CategoryType, ElementId, BuiltInCategory\n    from Autodesk.Revit.UI.Selection import ObjectType\n    from Autodesk.Revit.Exceptions import OperationCanceledException\n    from Autodesk.Revit.DB.ExtensibleStorage import (",
+        "detail": "02_AddClassification.pushbutton.script",
+        "documentation": {}
+    },
+    {
+        "label": "__title__",
+        "kind": 5,
+        "importPath": "02_AddClassification.pushbutton.script",
+        "description": "02_AddClassification.pushbutton.script",
+        "peekOfCode": "__title__ = \"Add\\nClassification\"\n__doc__ = \"Add external classification to selected elements\"\nfrom pyrevit import forms\ndef main():\n    import clr\n    clr.AddReference('System')\n    import System\n    import os\n    import json as _json\n    from Autodesk.Revit.DB import Transaction, FilteredElementCollector, CategoryType, ElementId, BuiltInCategory",
+        "detail": "02_AddClassification.pushbutton.script",
+        "documentation": {}
+    },
+    {
+        "label": "__doc__",
+        "kind": 5,
+        "importPath": "02_AddClassification.pushbutton.script",
+        "description": "02_AddClassification.pushbutton.script",
+        "peekOfCode": "__doc__ = \"Add external classification to selected elements\"\nfrom pyrevit import forms\ndef main():\n    import clr\n    clr.AddReference('System')\n    import System\n    import os\n    import json as _json\n    from Autodesk.Revit.DB import Transaction, FilteredElementCollector, CategoryType, ElementId, BuiltInCategory\n    from Autodesk.Revit.UI.Selection import ObjectType",
+        "detail": "02_AddClassification.pushbutton.script",
+        "documentation": {}
+    },
+    {
+        "label": "main",
+        "kind": 2,
+        "importPath": "03_ExportIFC.pushbutton.script",
+        "description": "03_ExportIFC.pushbutton.script",
+        "peekOfCode": "def main():\n    import re\n    import uuid\n    import datetime\n    import json\n    import clr\n    clr.AddReference(\"System\")\n    clr.AddReference(\"System.Windows.Forms\")\n    import System\n    from System.Windows.Forms import SaveFileDialog, DialogResult",
+        "detail": "03_ExportIFC.pushbutton.script",
+        "documentation": {}
+    },
+    {
+        "label": "__title__",
+        "kind": 5,
+        "importPath": "03_ExportIFC.pushbutton.script",
+        "description": "03_ExportIFC.pushbutton.script",
+        "peekOfCode": "__title__ = \"Export\\nIFC\"\n__doc__ = \"Exports IFC with external classification.\"\nimport os\nfrom pyrevit import forms\ndef main():\n    import re\n    import uuid\n    import datetime\n    import json\n    import clr",
+        "detail": "03_ExportIFC.pushbutton.script",
+        "documentation": {}
+    },
+    {
+        "label": "__doc__",
+        "kind": 5,
+        "importPath": "03_ExportIFC.pushbutton.script",
+        "description": "03_ExportIFC.pushbutton.script",
+        "peekOfCode": "__doc__ = \"Exports IFC with external classification.\"\nimport os\nfrom pyrevit import forms\ndef main():\n    import re\n    import uuid\n    import datetime\n    import json\n    import clr\n    clr.AddReference(\"System\")",
+        "detail": "03_ExportIFC.pushbutton.script",
+        "documentation": {}
+    }
+]
