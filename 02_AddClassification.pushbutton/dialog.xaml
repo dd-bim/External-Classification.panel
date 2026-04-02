@@ -90,7 +90,11 @@
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel Margin="2">
-                                        <TextBlock Text="{Binding name}" FontWeight="SemiBold" FontSize="12" TextWrapping="Wrap"/>
+                                        <TextBlock FontSize="12" TextWrapping="Wrap">
+                                            <Run Text="{Binding name}" FontWeight="SemiBold"/>
+                                            <Run Text=" "/>
+                                            <Run Text="{Binding code, StringFormat=({0})}" FontStyle="Italic" Foreground="#444"/>
+                                        </TextBlock>
                                         <TextBlock Text="{Binding descriptionPart}" FontSize="11" Foreground="#666"
                                                    TextWrapping="Wrap" Margin="0,1,0,0"/>
                                     </StackPanel>
@@ -270,6 +274,54 @@
 
                     <TextBlock Grid.Row="2" x:Name="OverviewStats"
                                Margin="0,6,0,0" FontStyle="Italic" Foreground="#555"/>
+                </Grid>
+            </TabItem>
+
+            <!-- Tab 3: Properties Management -->
+            <TabItem Header="Properties">
+                <Grid Margin="0,8,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button x:Name="RefreshPropertiesBtn"
+                                Content="Refresh Properties"
+                                HorizontalAlignment="Left"
+                                Padding="12,4" Height="28" Margin="0,0,8,0"
+                                Click="RefreshProperties_Click">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Background" Value="#546E7A"/>
+                                    <Setter Property="Foreground" Value="White"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="Cursor" Value="Hand"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#607D8B"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <TextBlock x:Name="PropertiesStatusText" Text="No properties configured."
+                                   VerticalAlignment="Center" Foreground="#666" FontStyle="Italic"/>
+                    </StackPanel>
+
+                    <TreeView Grid.Row="1" x:Name="PropertiesTree"
+                             Padding="8"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                             MouseDoubleClick="PropertiesTree_MouseDoubleClick">
+                        <!-- Properties will be populated here -->
+                    </TreeView>
+
+                    <Border Grid.Row="2" Background="#FFF3E0" CornerRadius="4" Padding="8" Margin="0,8,0,0">
+                        <TextBlock Text="Double-click a property row to edit its value. Changes are saved immediately."
+                                   Foreground="#555" FontSize="11" TextWrapping="Wrap"/>
+                    </Border>
                 </Grid>
             </TabItem>
         </TabControl>

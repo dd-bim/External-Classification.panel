@@ -3,6 +3,8 @@ __title__ = "Add\nClassification"
 __doc__ = "Add external classification to selected elements"
 
 from pyrevit import forms
+import properties_editor as pe
+import properties_editor_dialog as ped
 
 
 def main():
@@ -30,6 +32,59 @@ def main():
 
     def normalize_text(value):
         return (value or "").strip().lower()
+
+    def safe_unicode(value):
+        try:
+            if value is None:
+                return u""
+            if isinstance(value, unicode):
+                return value
+            if isinstance(value, System.String):
+                return u"{}".format(value)
+            if isinstance(value, str):
+                try:
+                    return value.decode("utf-8")
+                except Exception:
+                    try:
+                        return value.decode("cp1252")
+                    except Exception:
+                        return value.decode("latin-1", "ignore")
+            if hasattr(value, "ToString"):
+                return u"{}".format(value.ToString())
+            return u"{}".format(value)
+        except Exception:
+            try:
+                return u"{}".format(value)
+            except Exception:
+                return u""
+
+    def safe_json_dumps(obj):
+        def normalize(item):
+            if item is None:
+                return None
+            if isinstance(item, (bool, int, long, float)):
+                return item
+            if isinstance(item, (unicode, str)):
+                return safe_unicode(item)
+            if isinstance(item, list):
+                return [normalize(x) for x in item]
+            if isinstance(item, tuple):
+                return [normalize(x) for x in item]
+            if isinstance(item, dict):
+                result = {}
+                for key, value in item.items():
+                    result[safe_unicode(key)] = normalize(value)
+                return result
+            return safe_unicode(item)
+
+        return _json.dumps(normalize(obj), ensure_ascii=True)
+
+    def safe_query_value(value):
+        txt = safe_unicode(value)
+        try:
+            return txt.encode("utf-8")
+        except Exception:
+            return txt
 
     def get_stored_url():
         schema = Schema.Lookup(System.Guid(_URL_SCHEMA_GUID_STR))
@@ -83,11 +138,11 @@ def main():
                                 if not isinstance(p, dict):
                                     continue
                                 items.append({
-                                    "code": (p.get("code") or "").strip(),
-                                    "name": (p.get("name") or "").strip(),
-                                    "class_uri": (p.get("class_uri") or "").strip(),
-                                    "dict_name": (p.get("dict_name") or "").strip(),
-                                    "dict_uri": (p.get("dict_uri") or "").strip(),
+                                    "code": safe_unicode(p.get("code") or "").strip(),
+                                    "name": safe_unicode(p.get("name") or "").strip(),
+                                    "class_uri": safe_unicode(p.get("class_uri") or "").strip(),
+                                    "dict_name": safe_unicode(p.get("dict_name") or "").strip(),
+                                    "dict_uri": safe_unicode(p.get("dict_uri") or "").strip(),
                                 })
         except Exception:
             items = []
@@ -102,11 +157,11 @@ def main():
                     code = ent.Get[System.String](legacy_fields["Code"]) or ""
                     if code:
                         items.append({
-                            "code": code,
-                            "name": ent.Get[System.String](legacy_fields["Name"]) or "",
-                            "class_uri": ent.Get[System.String](legacy_fields["ClassUri"]) or "",
-                            "dict_name": ent.Get[System.String](legacy_fields["DictionaryName"]) or "",
-                            "dict_uri": ent.Get[System.String](legacy_fields["DictionaryUri"]) or "",
+                            "code": safe_unicode(code),
+                            "name": safe_unicode(ent.Get[System.String](legacy_fields["Name"]) or ""),
+                            "class_uri": safe_unicode(ent.Get[System.String](legacy_fields["ClassUri"]) or ""),
+                            "dict_name": safe_unicode(ent.Get[System.String](legacy_fields["DictionaryName"]) or ""),
+                            "dict_uri": safe_unicode(ent.Get[System.String](legacy_fields["DictionaryUri"]) or ""),
                         })
         except Exception:
             pass
@@ -117,14 +172,14 @@ def main():
         clean_items = []
         seen = set()
         for it in items:
-            d_name = (it.get("dict_name") or "").strip()
-            d_uri = (it.get("dict_uri") or "").strip()
-            code = (it.get("code") or "").strip()
-            name = (it.get("name") or "").strip()
-            class_uri = (it.get("class_uri") or "").strip()
+            d_name = safe_unicode(it.get("dict_name") or "").strip()
+            d_uri = safe_unicode(it.get("dict_uri") or "").strip()
+            code = safe_unicode(it.get("code") or "").strip()
+            name = safe_unicode(it.get("name") or "").strip()
+            class_uri = safe_unicode(it.get("class_uri") or "").strip()
             if not code or not d_name:
                 continue
-            key = (normalize_text(d_name), normalize_text(d_uri), normalize_text(code), normalize_text(name))
+            key = (normalize_text(d_name), normalize_text(d_uri), normalize_text(code), normalize_text(name), normalize_text(class_uri))
             if key in seen:
                 continue
             seen.add(key)
@@ -138,7 +193,7 @@ def main():
 
         if multi_schema and multi_items_field:
             ment = Entity(multi_schema)
-            ment.Set[System.String](multi_items_field, _json.dumps(clean_items))
+            ment.Set[System.String](multi_items_field, safe_json_dumps(clean_items))
             elem.SetEntity(ment)
 
         # Keep legacy schema in sync with the newest entry for backward compatibility.
@@ -184,9 +239,11 @@ def main():
     def apply_classification_to_elements(element_ids, cls_data, dict_data):
         dict_name = (dict_data or {}).get("name", "")
         dict_uri  = (dict_data or {}).get("uri", "")
-        code      = (cls_data or {}).get("code", (cls_data or {}).get("referenceCode", ""))
-        name      = (cls_data or {}).get("name", "")
-        class_uri = (cls_data or {}).get("classUri", (cls_data or {}).get("uri", ""))
+        code      = safe_unicode((cls_data or {}).get("code", (cls_data or {}).get("referenceCode", "")))
+        name      = safe_unicode((cls_data or {}).get("name", ""))
+        class_uri = safe_unicode((cls_data or {}).get("classUri", (cls_data or {}).get("uri", "")))
+        dict_name = safe_unicode(dict_name)
+        dict_uri  = safe_unicode(dict_uri)
 
         elems = []
         for eid in element_ids:
@@ -221,6 +278,17 @@ def main():
                 return item_uri_norm == target_dict_uri_norm
             return item_name_norm == target_dict_name_norm
 
+        def same_class(item):
+            item_class_uri = normalize_text(item.get("class_uri", ""))
+            if class_uri and item_class_uri:
+                return item_class_uri == normalize_text(class_uri)
+            return (
+                normalize_text(item.get("dict_uri", "")) == target_dict_uri_norm and
+                normalize_text(item.get("dict_name", "")) == target_dict_name_norm and
+                normalize_text(item.get("code", "")) == normalize_text(code) and
+                normalize_text(item.get("name", "")) == normalize_text(name)
+            )
+
         tx_write = Transaction(doc, "Set External Classification")
         try:
             tx_write.Start()
@@ -233,7 +301,7 @@ def main():
                         multi_schema=multi_schema,
                         multi_items_field=multi_items_field
                     )
-                    merged = [it for it in existing if not same_system(it)]
+                    merged = [it for it in existing if not same_class(it)]
                     merged.append({
                         "code": code or "",
                         "name": name or "",
@@ -267,9 +335,9 @@ def main():
     class ClassItem(object):
         def __init__(self, data):
             self.data            = data
-            self.name            = data.get("name", "") or ""
-            self.code            = data.get("code", data.get("referenceCode", "")) or ""
-            self.descriptionPart = data.get("descriptionPart", "") or ""
+            self.name            = safe_unicode(data.get("name", "") or "")
+            self.code            = safe_unicode(data.get("code", data.get("referenceCode", "")) or "")
+            self.descriptionPart = safe_unicode(data.get("descriptionPart", "") or "")
         def ToString(self):
             return u"{} - {}".format(self.name, self.descriptionPart)
         def __str__(self):
@@ -350,9 +418,7 @@ def main():
             if params:
                 safe = {}
                 for k, v in params.items():
-                    if isinstance(k, unicode): k = k.encode("utf-8")
-                    if isinstance(v, unicode): v = v.encode("utf-8")
-                    safe[k] = v
+                    safe[safe_query_value(k)] = safe_query_value(v)
                 full = full + "?" + _ulbase.urlencode(safe)
             resp = _ul.urlopen(full.encode("utf-8") if isinstance(full, unicode) else full, timeout=30)
             raw  = resp.read()
@@ -373,7 +439,7 @@ def main():
                     dicts = result.get("dictionaries", []) if isinstance(result, dict) else []
                     dicts = sorted(
                         dicts,
-                        key=lambda d: ((d.get("name") if isinstance(d, dict) else str(d)) or u"").lower()
+                        key=lambda d: safe_unicode((d.get("name") if isinstance(d, dict) else d) or u"").lower()
                     )
                     session_cache["dicts"] = dicts
                 if not dicts:
@@ -383,8 +449,8 @@ def main():
                 self._suspend_dict_selection_handler = True
                 self.DictionaryComboBox.Items.Clear()
                 for d in self._dicts:
-                    _dname = d.get("name") or str(d)
-                    _dver = (d.get("version") or d.get("releaseDate") or "").strip()
+                    _dname = safe_unicode(d.get("name") or d)
+                    _dver = safe_unicode(d.get("version") or d.get("releaseDate") or "").strip()
                     _dlabel = u"{} ({})".format(_dname, _dver) if _dver else _dname
                     self.DictionaryComboBox.Items.Add(_dlabel)
                 if self._preselected_dict_uri:
@@ -418,7 +484,7 @@ def main():
                 if classes is None:
                     result = self._get("/api/Dictionary/v1/Classes", {"Uri": dict_uri})
                     classes = result.get("classes", []) if isinstance(result, dict) else []
-                    classes.sort(key=lambda c: (c.get("name") or u"").lower())
+                    classes.sort(key=lambda c: safe_unicode(c.get("name") or u"").lower())
                     classes_by_uri[dict_uri] = classes
                 self._all_classes = classes
                 self._populate_list(classes)
@@ -436,11 +502,11 @@ def main():
             item = self.ClassListBox.SelectedItem
             return item.data if item else None
 
-        def _apply_to_elements(self, element_ids, show_done_alert=True):
+        def _apply_to_elements(self, element_ids, show_done_alert=True, open_properties_after=False):
             cls_data = self._get_selected_class()
             if not cls_data:
                 forms.alert("Please select a class first.", title="Notice")
-                return
+                return 0, 0, None
             idx       = self.DictionaryComboBox.SelectedIndex
             dict_data = self._dicts[idx] if (idx >= 0 and idx < len(self._dicts)) else {}
 
@@ -450,13 +516,23 @@ def main():
                     "Classification write failed due to an unexpected Revit transaction error.",
                     title="Error"
                 )
-                return
+                return 0, 0, tx_ex
             msg = "Classified {} element(s).".format(success)
             if errors:
                 msg += " {} error(s).".format(errors)
             self._set_status(msg)
             if show_done_alert:
                 forms.alert(msg, title="Done")
+
+            if open_properties_after and success > 0:
+                run_post_classification_property_flow(
+                    list(element_ids or []),
+                    cls_data,
+                    dict_data,
+                    success
+                )
+
+            return success, errors, None
 
         def _remove_selected_classifications(self, selected_rows):
             legacy_schema = Schema.Lookup(System.Guid(_CLS_SCHEMA_GUID_STR))
@@ -552,6 +628,7 @@ def main():
 
                         keep_items = []
                         local_removed = 0
+                        removed_class_uris = []
                         for it in existing:
                             matched = False
                             for sel in selectors:
@@ -560,6 +637,12 @@ def main():
                                     break
                             if matched:
                                 local_removed += 1
+                                try:
+                                    rem_uri = (it.get("class_uri", "") or "").strip()
+                                    if rem_uri:
+                                        removed_class_uris.append(rem_uri)
+                                except Exception:
+                                    pass
                             else:
                                 keep_items.append(it)
 
@@ -604,6 +687,13 @@ def main():
                             ):
                                 _clear_all_named_params(elem, pname)
 
+                        # Keep properties storage consistent with removed classifications.
+                        for rem_uri in set(removed_class_uris):
+                            try:
+                                pe.delete_class_properties(elem, rem_uri)
+                            except Exception:
+                                pass
+
                         elements_changed += 1
                         removed_lines += local_removed
                     except Exception:
@@ -634,15 +724,15 @@ def main():
                 self._load_classes(self._pending_dict_uri)
 
         def SearchBox_TextChanged(self, sender, args):
-            query = (self.SearchBox.Text or "").strip().lower()
+            query = safe_unicode(self.SearchBox.Text or "").strip().lower()
             if not query:
                 self._populate_list(self._all_classes)
                 return
             filtered = [
                 c for c in self._all_classes
-                if query in (c.get("name", "") or "").lower()
-                or query in (c.get("code", "") or "").lower()
-                or query in (c.get("referenceCode", "") or "").lower()
+                if query in safe_unicode(c.get("name", "") or "").lower()
+                or query in safe_unicode(c.get("code", "") or "").lower()
+                or query in safe_unicode(c.get("referenceCode", "") or "").lower()
             ]
             self._populate_list(filtered)
 
@@ -653,9 +743,9 @@ def main():
             self.SelectAndAssignBtn.IsEnabled   = can
             if item:
                 d = item.data
-                self.DetailCode.Text = d.get("code", d.get("referenceCode", ""))
-                self.DetailName.Text = d.get("name", "")
-                self.DetailUri.Text  = d.get("classUri", d.get("uri", ""))
+                self.DetailCode.Text = safe_unicode(d.get("code", d.get("referenceCode", "")))
+                self.DetailName.Text = safe_unicode(d.get("name", ""))
+                self.DetailUri.Text  = safe_unicode(d.get("classUri", d.get("uri", "")))
                 self.ClassDetailPanel.Visibility = System.Windows.Visibility.Visible
             else:
                 self.ClassDetailPanel.Visibility = System.Windows.Visibility.Collapsed
@@ -665,7 +755,7 @@ def main():
             if not sel_ids:
                 forms.alert("No elements selected.\nPlease select elements in Revit first.", title="Notice")
                 return
-            self._apply_to_elements(sel_ids)
+            self._apply_to_elements(sel_ids, open_properties_after=True)
 
         def SelectAndAssign_Click(self, sender, args):
             cls_data = self._get_selected_class()
@@ -691,9 +781,283 @@ def main():
                 return
             if self.MainTabControl.SelectedIndex == 1:
                 self._load_overview()
+            elif self.MainTabControl.SelectedIndex == 2:
+                self._load_properties()
 
         def RefreshOverview_Click(self, sender, args):
             self._load_overview()
+
+        def RefreshProperties_Click(self, sender, args):
+            self._load_properties()
+
+        def _load_properties(self):
+            import clr
+            clr.AddReference('PresentationFramework')
+            clr.AddReference('PresentationCore')
+            clr.AddReference('WindowsBase')
+            from System.Windows import Thickness, FontWeights
+            from System.Windows.Controls import TreeViewItem, Grid, ColumnDefinition, TextBlock
+            from System.Windows import GridLength, GridUnitType
+            from System.Windows.Media import FontFamily
+            import Autodesk.Revit.DB as DB_inner
+
+            self.PropertiesTree.Items.Clear()
+            properties_count = 0
+
+            def _build_property_row(name_text, value_text, type_text, is_header=False):
+                row_grid = Grid()
+                row_grid.MinWidth = 560
+                col_name = ColumnDefinition()
+                col_name.Width = GridLength(240, GridUnitType.Pixel)
+                row_grid.ColumnDefinitions.Add(col_name)
+
+                col_value = ColumnDefinition()
+                col_value.Width = GridLength(1, GridUnitType.Star)
+                row_grid.ColumnDefinitions.Add(col_value)
+
+                col_type = ColumnDefinition()
+                col_type.Width = GridLength(140, GridUnitType.Pixel)
+                row_grid.ColumnDefinitions.Add(col_type)
+
+                cell_name = TextBlock(Text=name_text)
+                cell_name.Margin = Thickness(0, 0, 8, 0)
+                cell_name.FontWeight = FontWeights.SemiBold if is_header else FontWeights.Normal
+                cell_name.FontFamily = FontFamily("Consolas")
+                Grid.SetColumn(cell_name, 0)
+
+                cell_value = TextBlock(Text=value_text)
+                cell_value.Margin = Thickness(0, 0, 8, 0)
+                cell_value.FontWeight = FontWeights.SemiBold if is_header else FontWeights.Normal
+                cell_value.FontFamily = FontFamily("Consolas")
+                Grid.SetColumn(cell_value, 1)
+
+                cell_type = TextBlock(Text=type_text)
+                cell_type.FontWeight = FontWeights.SemiBold if is_header else FontWeights.Normal
+                cell_type.FontFamily = FontFamily("Consolas")
+                Grid.SetColumn(cell_type, 2)
+
+                row_grid.Children.Add(cell_name)
+                row_grid.Children.Add(cell_value)
+                row_grid.Children.Add(cell_type)
+                return row_grid
+
+            def _decode_display_text(raw_value):
+                try:
+                    txt = unicode(raw_value or "")
+                except Exception:
+                    try:
+                        txt = u"{}".format(raw_value or "")
+                    except Exception:
+                        txt = u""
+
+                if not txt:
+                    return u"(empty)"
+
+                # Values are stored ASCII-safe and may contain escape sequences
+                # like \xf6 or \u00f6; decode for human-readable UI.
+                try:
+                    if "\\x" in txt or "\\u" in txt or "\\U" in txt:
+                        try:
+                            decoded = txt.encode("utf-8").decode("unicode_escape")
+                        except Exception:
+                            decoded = str(txt).decode("unicode_escape")
+                        if decoded:
+                            txt = unicode(decoded)
+                except Exception:
+                    pass
+
+                return txt
+
+            legacy_schema = Schema.Lookup(System.Guid(_CLS_SCHEMA_GUID_STR))
+            legacy_fields = None
+            if legacy_schema:
+                legacy_fields = {
+                    "Code": legacy_schema.GetField("Code"),
+                    "Name": legacy_schema.GetField("Name"),
+                    "ClassUri": legacy_schema.GetField("ClassUri"),
+                    "DictionaryName": legacy_schema.GetField("DictionaryName"),
+                    "DictionaryUri": legacy_schema.GetField("DictionaryUri"),
+                }
+            multi_schema = Schema.Lookup(System.Guid(_CLS_MULTI_SCHEMA_GUID_STR))
+            multi_items_field = multi_schema.GetField("ItemsJson") if multi_schema else None
+
+            try:
+                all_ids = list(DB_inner.FilteredElementCollector(doc).WhereElementIsNotElementType().ToElementIds())
+
+                for eid in all_ids:
+                    try:
+                        elem = doc.GetElement(eid)
+                        if not elem or not elem.IsValidObject:
+                            continue
+
+                        elem_props = pe.load_all_class_properties(elem)
+                        if not elem_props:
+                            continue
+
+                        class_name_by_uri = {}
+                        try:
+                            cls_entries = load_element_classifications(
+                                elem,
+                                legacy_schema=legacy_schema,
+                                legacy_fields=legacy_fields,
+                                multi_schema=multi_schema,
+                                multi_items_field=multi_items_field
+                            )
+                            for cls_entry in cls_entries:
+                                cls_uri = (cls_entry.get("class_uri") or "").strip()
+                                cls_name = (cls_entry.get("name") or cls_entry.get("code") or "").strip()
+                                if cls_uri and cls_name:
+                                    class_name_by_uri[cls_uri] = cls_name
+                        except Exception:
+                            pass
+
+                        try:
+                            elem_name = elem.Name or "Unknown"
+                        except Exception:
+                            elem_name = "Unknown"
+
+                        elem_item = TreeViewItem()
+                        elem_item.Header = u"{}  [ID: {}]".format(elem_name, eid.IntegerValue)
+                        elem_item.Tag = (eid.IntegerValue, "element")
+                        elem_item.IsExpanded = True
+
+                        for class_uri, property_data in elem_props.items():
+                            class_item = TreeViewItem()
+                            class_name = class_name_by_uri.get(class_uri, "")
+                            if class_name:
+                                class_item.Header = u"Class: {}".format(class_name)
+                            else:
+                                class_item.Header = u"Class: {}".format(class_uri[:50] + "..." if len(class_uri) > 50 else class_uri)
+                            class_item.ToolTip = class_uri
+                            class_item.Tag = (eid.IntegerValue, class_uri, "class")
+                            class_item.IsExpanded = True
+
+                            psets = property_data.get("property_sets", [])
+                            for pset in psets:
+                                pset_item = TreeViewItem()
+                                enabled_count = len([p for p in pset.get("properties", []) if p.get("enabled")])
+                                pset_item.Header = u"{}  ({} enabled)".format(pset.get("name", "PropertySet"), enabled_count)
+                                pset_item.Tag = (eid.IntegerValue, class_uri, pset.get("name", ""), "pset")
+                                pset_item.IsExpanded = True
+
+                                pset_header_item = TreeViewItem()
+                                pset_header_item.Header = _build_property_row("Name", "Value", "Type", is_header=True)
+                                pset_header_item.IsEnabled = False
+                                pset_header_item.Focusable = False
+                                pset_item.Items.Add(pset_header_item)
+
+                                for prop in pset.get("properties", []):
+                                    has_value = prop.get("value") not in (None, "")
+                                    if prop.get("enabled") or has_value:
+                                        prop_item = TreeViewItem()
+                                        prop_name = prop.get("name", "")
+                                        prop_val = prop.get("value", "")
+                                        prop_type = prop.get("dataType", "")
+                                        if not prop_type or str(prop_type).strip().lower() in ("none", "null", ""):
+                                            prop_type = "undefined"
+
+                                        prop_val_display = _decode_display_text(prop_val)
+
+                                        prop_item.Header = _build_property_row(
+                                            unicode(prop_name or ""),
+                                            unicode(prop_val_display or ""),
+                                            unicode(prop_type or "undefined")
+                                        )
+                                        prop_item.Tag = (eid.IntegerValue, class_uri, pset.get("name", ""), prop_name, prop_val)
+                                        pset_item.Items.Add(prop_item)
+                                        properties_count += 1
+
+                                class_item.Items.Add(pset_item)
+
+                            elem_item.Items.Add(class_item)
+
+                        self.PropertiesTree.Items.Add(elem_item)
+                    except Exception:
+                        pass
+
+                if properties_count > 0:
+                    self.PropertiesStatusText.Text = u"Showing: {} configured properties on {} element(s)".format(
+                        properties_count, self.PropertiesTree.Items.Count
+                    )
+                else:
+                    self.PropertiesStatusText.Text = "No properties configured yet. Configure in classification dialog."
+            except Exception as ex:
+                self.PropertiesStatusText.Text = "Error loading properties: {}".format(str(ex)[:80])
+
+        def PropertiesTree_MouseDoubleClick(self, sender, args):
+            import Autodesk.Revit.DB as DB_local
+            from Autodesk.Revit.DB import Transaction as TX_local
+
+            def _decode_for_edit(raw_value):
+                try:
+                    txt = unicode(raw_value or "")
+                except Exception:
+                    try:
+                        txt = u"{}".format(raw_value or "")
+                    except Exception:
+                        txt = u""
+
+                try:
+                    if "\\x" in txt or "\\u" in txt or "\\U" in txt:
+                        try:
+                            decoded = txt.encode("utf-8").decode("unicode_escape")
+                        except Exception:
+                            decoded = str(txt).decode("unicode_escape")
+                        if decoded:
+                            txt = unicode(decoded)
+                except Exception:
+                    pass
+
+                return txt
+
+            selected = sender.SelectedItem
+            if not selected or not hasattr(selected, 'Tag') or not selected.Tag:
+                return
+
+            tag = selected.Tag
+            if not isinstance(tag, tuple) or len(tag) != 5:
+                return
+
+            try:
+                eid_int, class_uri, pset_name, prop_name, current_val = tag
+                eid = DB_local.ElementId(eid_int)
+                elem = doc.GetElement(eid)
+                if not elem or not elem.IsValidObject:
+                    return
+
+                current_display = _decode_for_edit(current_val)
+
+                from pyrevit import forms as prf
+                new_value = prf.ask_for_string(
+                    current_display or "",
+                    title="Edit Property Value",
+                    prompt=u"New value for '{}':\n(Current: {})".format(prop_name, current_display or "(empty)")
+                )
+
+                if new_value is not None:
+                    tx = TX_local(doc, "Update Property Value")
+                    tx.Start()
+                    ok = False
+                    try:
+                        ok = bool(pe.update_property_value(elem, class_uri, pset_name, prop_name, new_value))
+                        if ok:
+                            tx.Commit()
+                        else:
+                            tx.RollBack()
+                    except Exception:
+                        try:
+                            tx.RollBack()
+                        except Exception:
+                            pass
+                        raise
+
+                    if ok:
+                        self._load_properties()
+                        self.PropertiesStatusText.Text = u"Updated: {}".format(prop_name)
+                    else:
+                        self.PropertiesStatusText.Text = u"Update failed: {}".format(prop_name)
+            except Exception:
+                self.PropertiesStatusText.Text = u"Error: Operation failed"
 
         def _get_selected_overview_element_ids(self):
             element_ids = []
@@ -810,6 +1174,115 @@ def main():
             except Exception as ex:
                 self._set_status(u"Overview error: {}".format(ex))
 
+    def run_post_classification_property_flow(element_ids, class_data, dict_data, success_count):
+        """Open property dialog after successful classification assignment."""
+        try:
+            if not element_ids or success_count <= 0:
+                return
+
+            class_uri = (class_data or {}).get("uri", "") or (class_data or {}).get("classUri", "")
+            dict_uri = (dict_data or {}).get("uri", "")
+            if not class_uri:
+                return
+
+            dialog_class_data = dict(class_data or {})
+
+            # Always fetch full class properties: class-list payloads are often partial
+            # and can miss specific types such as Time.
+            try:
+                import urllib2 as _ul
+                import urllib as _ulbase
+                import json as _json
+
+                endpoints = [
+                    url.rstrip("/") + "/api/Class/v1/",
+                    url.rstrip("/") + "/api/Class/v1",
+                ]
+
+                attempts = []
+
+                p1 = {"Uri": class_uri, "IncludeClassProperties": "true"}
+                if dict_uri:
+                    p1["DictionaryUri"] = dict_uri
+                attempts.append(p1)
+
+                p2 = {"uri": class_uri, "IncludeClassProperties": "true"}
+                if dict_uri:
+                    p2["dictionaryUri"] = dict_uri
+                attempts.append(p2)
+
+                attempts.append({"Uri": class_uri, "IncludeClassProperties": "true"})
+                attempts.append({"ClassUri": class_uri, "IncludeClassProperties": "true"})
+                attempts.append({"ClassUri": class_uri, "includeClassProperties": "true"})
+                attempts.append({"uri": class_uri, "includeClassProperties": "true"})
+
+                def _extract_candidate(payload_obj):
+                    if isinstance(payload_obj, dict):
+                        cps = payload_obj.get("classProperties", []) or []
+                        if isinstance(cps, list):
+                            return payload_obj
+
+                        classes = payload_obj.get("classes", []) or []
+                        if isinstance(classes, list):
+                            for c in classes:
+                                if isinstance(c, dict) and isinstance(c.get("classProperties", []), list):
+                                    return c
+
+                    if isinstance(payload_obj, list):
+                        for c in payload_obj:
+                            if isinstance(c, dict) and isinstance(c.get("classProperties", []), list):
+                                return c
+                    return None
+
+                best_payload = None
+                best_count = len(list((dialog_class_data or {}).get("classProperties", []) or []))
+
+                for endpoint in endpoints:
+                    for params in attempts:
+                        try:
+                            safe = {}
+                            for k, v in params.items():
+                                safe[safe_query_value(k)] = safe_query_value(v)
+
+                            full = endpoint + "?" + _ulbase.urlencode(safe)
+                            resp = _ul.urlopen(full.encode("utf-8") if isinstance(full, unicode) else full, timeout=30)
+                            raw = resp.read()
+
+                            payload = None
+                            try:
+                                payload = _json.loads(raw.decode("utf-8"))
+                            except Exception:
+                                try:
+                                    payload = _json.loads(raw)
+                                except Exception:
+                                    payload = None
+
+                            candidate = _extract_candidate(payload)
+                            if isinstance(candidate, dict):
+                                count = len(list(candidate.get("classProperties", []) or []))
+                                if best_payload is None or count > best_count:
+                                    best_payload = candidate
+                                    best_count = count
+                        except Exception:
+                            pass
+
+                if isinstance(best_payload, dict) and best_count > 0:
+                    merged = dict(dialog_class_data or {})
+                    merged.update(best_payload)
+                    # Keep richest list discovered.
+                    merged["classProperties"] = list(best_payload.get("classProperties", []) or [])
+                    dialog_class_data = merged
+                    if "uri" not in dialog_class_data:
+                        dialog_class_data["uri"] = class_uri
+            except Exception:
+                # Keep fallback class data if details endpoint fails.
+                pass
+
+            prop_dialog = ped.PropertyEditorDialog(doc, element_ids, dialog_class_data, dict_data or {})
+            prop_dialog.ShowDialog()
+        except Exception as ex:
+            forms.alert("Classification saved, but the property dialog could not be opened.\n{}".format(ex), title="Properties")
+
     last_dict_uri = ""
 
     while True:
@@ -858,6 +1331,13 @@ def main():
         if errors:
             msg += " {} error(s).".format(errors)
         forms.alert(msg, title="Done")
+
+        run_post_classification_property_flow(
+            picked_ids,
+            req.get("class_data", {}),
+            req.get("dict_data", {}),
+            success
+        )
 
 
 main()

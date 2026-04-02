@@ -75,6 +75,18 @@ def main():
             pass
         return None
 
+    def safe_query_value(value):
+        try:
+            if value is None:
+                return ""
+            txt = text_type(value)
+            try:
+                return txt.encode("utf-8")
+            except Exception:
+                return txt
+        except Exception:
+            return ""
+
     def api_get_json(base_url, endpoint, params=None):
         import urllib2 as _ul
         import urllib as _ub
@@ -83,11 +95,7 @@ def main():
         if params:
             safe = {}
             for k, v in params.items():
-                if isinstance(k, text_type):
-                    k = k.encode("utf-8")
-                if isinstance(v, text_type):
-                    v = v.encode("utf-8")
-                safe[k] = v
+                safe[safe_query_value(k)] = safe_query_value(v)
             full = full + "?" + _ub.urlencode(safe)
         resp = _ul.urlopen(full.encode("utf-8") if isinstance(full, text_type) else full, timeout=30)
         raw = resp.read()
@@ -281,6 +289,29 @@ def main():
     def normalize_text(value):
         return (text_type(value or "").strip()).lower()
 
+    def safe_unicode(value):
+        try:
+            if value is None:
+                return u""
+            if isinstance(value, text_type):
+                return value
+            if hasattr(value, "ToString"):
+                value = value.ToString()
+            if isinstance(value, bytes):
+                try:
+                    return value.decode("utf-8")
+                except Exception:
+                    try:
+                        return value.decode("cp1252")
+                    except Exception:
+                        return value.decode("latin-1", "ignore")
+            return text_type(value)
+        except Exception:
+            try:
+                return text_type(value)
+            except Exception:
+                return u""
+
     def read_element_classifications(elem, legacy_schema=None, legacy_fields=None, multi_schema=None, multi_items_field=None):
         items = []
 
@@ -296,11 +327,11 @@ def main():
                                 if not isinstance(p, dict):
                                     continue
                                 items.append({
-                                    "dict_name": (p.get("dict_name") or "").strip(),
-                                    "dict_uri": (p.get("dict_uri") or "").strip(),
-                                    "code": (p.get("code") or "").strip(),
-                                    "name": (p.get("name") or "").strip(),
-                                    "class_uri": (p.get("class_uri") or "").strip(),
+                                    "dict_name": safe_unicode(p.get("dict_name") or "").strip(),
+                                    "dict_uri": safe_unicode(p.get("dict_uri") or "").strip(),
+                                    "code": safe_unicode(p.get("code") or "").strip(),
+                                    "name": safe_unicode(p.get("name") or "").strip(),
+                                    "class_uri": safe_unicode(p.get("class_uri") or "").strip(),
                                 })
         except Exception:
             items = []
@@ -315,11 +346,11 @@ def main():
                     code_val = ent.Get[System.String](legacy_fields["Code"]) or ""
                     if code_val:
                         items.append({
-                            "dict_name": ent.Get[System.String](legacy_fields["DictionaryName"]) or "",
-                            "dict_uri": ent.Get[System.String](legacy_fields["DictionaryUri"]) or "",
-                            "code": code_val,
-                            "name": ent.Get[System.String](legacy_fields["Name"]) or "",
-                            "class_uri": ent.Get[System.String](legacy_fields["ClassUri"]) or "",
+                            "dict_name": safe_unicode(ent.Get[System.String](legacy_fields["DictionaryName"]) or ""),
+                            "dict_uri": safe_unicode(ent.Get[System.String](legacy_fields["DictionaryUri"]) or ""),
+                            "code": safe_unicode(code_val),
+                            "name": safe_unicode(ent.Get[System.String](legacy_fields["Name"]) or ""),
+                            "class_uri": safe_unicode(ent.Get[System.String](legacy_fields["ClassUri"]) or ""),
                         })
         except Exception:
             pass
@@ -379,8 +410,8 @@ def main():
                     continue
                 
                 # Filter by dict_name and dict_uri to get URIs for THIS system only
-                stored_dict_name = entity.Get[System.String](dict_name_field) if dict_name_field else ""
-                stored_dict_uri = entity.Get[System.String](dict_uri_field) if dict_uri_field else ""
+                stored_dict_name = safe_unicode(entity.Get[System.String](dict_name_field) if dict_name_field else "")
+                stored_dict_uri = safe_unicode(entity.Get[System.String](dict_uri_field) if dict_uri_field else "")
                 
                 # Match this element's system to the target system
                 if normalize_text(stored_dict_name) != normalize_text(dict_name):
@@ -389,9 +420,9 @@ def main():
                     continue
                 
                 # Extract the URI mapping from this element
-                code_val = entity.Get[System.String](code_field) if code_field else ""
-                name_val = entity.Get[System.String](name_field) if name_field else ""
-                class_uri_val = entity.Get[System.String](class_uri_field) if class_uri_field else ""
+                code_val = safe_unicode(entity.Get[System.String](code_field) if code_field else "")
+                name_val = safe_unicode(entity.Get[System.String](name_field) if name_field else "")
+                class_uri_val = safe_unicode(entity.Get[System.String](class_uri_field) if class_uri_field else "")
                 
                 code_val = (code_val or "").strip()
                 name_val = (name_val or "").strip()
@@ -424,9 +455,9 @@ def main():
         def add_classes_from_payload(payload):
             classes = payload.get("classes", []) if isinstance(payload, dict) else []
             for c in classes:
-                code_val = (c.get("code") or c.get("referenceCode") or "").strip()
-                name_val = (c.get("name") or "").strip()
-                class_uri_val = (c.get("classUri") or c.get("uri") or "").strip()
+                code_val = safe_unicode(c.get("code") or c.get("referenceCode") or "").strip()
+                name_val = safe_unicode(c.get("name") or "").strip()
+                class_uri_val = safe_unicode(c.get("classUri") or c.get("uri") or "").strip()
                 if not code_val or not class_uri_val:
                     continue
                 code_key = normalize_text(code_val)
@@ -558,6 +589,34 @@ def main():
             )
 
         return base_opts
+
+    def export_properties_to_json(ifc_path, element_properties_map):
+        """
+        Export collected properties to a JSON file alongside the IFC.
+        
+        This allows properties to be imported into other tools for further processing.
+        """
+        if not element_properties_map:
+            return (False, "No properties to export")
+        
+        json_path = ifc_path.replace(".ifc", "_properties.json")
+        
+        # Build export structure
+        export_data = {
+            "ifc_file": os.path.basename(ifc_path),
+            "export_date": text_type(datetime.datetime.now().isoformat()),
+            "elements": {}
+        }
+        
+        for elem_id_int, props_by_class in element_properties_map.items():
+            export_data["elements"][str(elem_id_int)] = props_by_class
+        
+        try:
+            with open(json_path, "w") as f:
+                json.dump(export_data, f, indent=2)
+            return (True, json_path)
+        except Exception as ex:
+            return (False, str(ex))
 
     def choose_ifc_output_path(default_doc_title):
         dialog = SaveFileDialog()
@@ -742,6 +801,375 @@ def main():
             info.append("No IFC post-processing changes required")
         return (True, "; ".join(info))
 
+    def inject_properties_into_ifc(ifc_path, element_properties_map):
+        """
+        Inject stored class properties directly into the IFC as
+        IfcPropertySet + IfcPropertySingleValue + IfcRelDefinesByProperties.
+        """
+        if not element_properties_map:
+            return (False, "No properties found on classified elements")
+
+        if not os.path.exists(ifc_path):
+            return (False, "IFC file not found")
+
+        with open(ifc_path, "r") as f:
+            content = f.read()
+
+        endsec_idx = content.upper().rfind("ENDSEC;")
+        if endsec_idx < 0:
+            return (False, "Invalid IFC structure: ENDSEC not found")
+
+        ids = [int(x) for x in re.findall(r"#(\d+)\s*=", content)]
+        next_id = (max(ids) + 1) if ids else 1
+
+        target_elem_ids = set(int(k) for k in element_properties_map.keys())
+
+        def _to_unicode(value):
+            try:
+                txt = text_type(value or "")
+            except Exception:
+                txt = "{}".format(value or "")
+
+            try:
+                if isinstance(txt, unicode):
+                    return txt
+            except Exception:
+                pass
+
+            try:
+                return txt.decode("utf-8")
+            except Exception:
+                pass
+            try:
+                return txt.decode("cp1252")
+            except Exception:
+                pass
+            try:
+                return txt.decode("latin-1")
+            except Exception:
+                pass
+            try:
+                return unicode(txt)
+            except Exception:
+                return u""
+
+        def _decode_storage_escapes(value):
+            txt = _to_unicode(value)
+            try:
+                if "\\x" in txt or "\\u" in txt or "\\U" in txt:
+                    try:
+                        decoded = txt.encode("utf-8").decode("unicode_escape")
+                    except Exception:
+                        decoded = str(txt).decode("unicode_escape")
+                    if decoded:
+                        txt = _to_unicode(decoded)
+            except Exception:
+                pass
+            return txt
+
+        def _ifc_escape_text(value):
+            txt = _decode_storage_escapes(value)
+            out = []
+            for ch in txt:
+                try:
+                    code = ord(ch)
+                except Exception:
+                    code = 0
+
+                if ch == "'":
+                    out.append("''")
+                elif 32 <= code <= 126 and ch != "\\":
+                    out.append(ch)
+                else:
+                    # ISO-10303-21 / IFC string escape for non-ASCII text.
+                    out.append("\\X2\\{:04X}\\X0\\".format(code & 0xFFFF))
+
+            return u"".join(out)
+
+        def _ifc_literal_ascii(value):
+            txt = _ifc_escape_text(value).strip()
+            if not txt:
+                return "$"
+            return "'{}'".format(txt)
+
+        # Best-effort mapping: Revit element id is typically at end of IFC element Name.
+        # Example: "Basic Wall:Generic - 200mm:123456" -> element id 123456
+        entity_by_elem = {}
+        line_regex = re.compile(r"^\s*#(\d+)\s*=\s*IFC[A-Z0-9_]+\s*\((.*)\)\s*;\s*$", re.IGNORECASE)
+        for line in content.splitlines():
+            m = line_regex.match(line)
+            if not m:
+                continue
+            ent_id = int(m.group(1))
+            args = split_ifc_args(m.group(2))
+            if len(args) < 3:
+                continue
+            name_txt = ifc_unquote(args[2])
+            mm = re.search(r"(?:^|[:#\s])(\d+)\s*$", name_txt or "")
+            if not mm:
+                continue
+            try:
+                rid = int(mm.group(1))
+            except Exception:
+                continue
+            if rid in target_elem_ids:
+                entity_by_elem.setdefault(rid, []).append(ent_id)
+
+        if not entity_by_elem:
+            return (False, "Could not map Revit element ids to IFC entities")
+
+        new_lines = []
+        rel_count = 0
+        pset_count = 0
+        prop_count = 0
+
+        for elem_id, class_map in element_properties_map.items():
+            try:
+                elem_id_int = int(elem_id)
+            except Exception:
+                continue
+
+            target_entities = entity_by_elem.get(elem_id_int, [])
+            if not target_entities:
+                continue
+
+            if not isinstance(class_map, dict):
+                continue
+
+            for class_uri, pdata in class_map.items():
+                psets = list((pdata or {}).get("property_sets", []) or [])
+                for pset in psets:
+                    pset_name = (pset.get("name") or "PropertySet").strip()
+                    props = list(pset.get("properties", []) or [])
+                    single_ids = []
+
+                    for prop in props:
+                        if not isinstance(prop, dict):
+                            continue
+                        enabled = bool(prop.get("enabled", False))
+                        raw_val = prop.get("value", "")
+                        if (not enabled) and raw_val in (None, ""):
+                            continue
+
+                        prop_name = (prop.get("name") or "Property").strip()
+                        prop_name_lit = _ifc_literal_ascii(prop_name)
+                        value_lit = _ifc_literal_ascii(raw_val)
+                        nominal = "$" if value_lit == "$" else "IFCTEXT({})".format(value_lit)
+
+                        sid = next_id
+                        next_id += 1
+                        new_lines.append(
+                            "#{}=IFCPROPERTYSINGLEVALUE({},$,{},{}) ;".format(sid, prop_name_lit, nominal, "$")
+                        )
+                        single_ids.append(sid)
+                        prop_count += 1
+
+                    if not single_ids:
+                        continue
+
+                    pset_id = next_id
+                    next_id += 1
+                    pset_name_lit = _ifc_literal_ascii(pset_name)
+                    has_props = "(" + ",".join("#{}".format(i) for i in single_ids) + ")"
+                    new_lines.append(
+                        "#{}=IFCPROPERTYSET({},$,{},{},{});".format(
+                            pset_id,
+                            _ifc_literal_ascii(new_ifc_guid_22()),
+                            pset_name_lit,
+                            "$",
+                            has_props
+                        )
+                    )
+                    pset_count += 1
+
+                    for ent_id in target_entities:
+                        rel_id = next_id
+                        next_id += 1
+                        new_lines.append(
+                            "#{}=IFCRELDEFINESBYPROPERTIES({},$,$,$,(#{}),#{});".format(
+                                rel_id,
+                                _ifc_literal_ascii(new_ifc_guid_22()),
+                                ent_id,
+                                pset_id
+                            )
+                        )
+                        rel_count += 1
+
+        if not new_lines:
+            return (False, "No enabled/non-empty properties to inject")
+
+        injected = "\n".join(new_lines) + "\n"
+        updated = content[:endsec_idx] + injected + content[endsec_idx:]
+
+        with open(ifc_path, "w") as f:
+            f.write(updated)
+
+        return (True, "Injected {} property values in {} property sets ({} relations)".format(prop_count, pset_count, rel_count))
+
+    def inject_classifications_into_ifc(ifc_path, element_class_map, all_systems_data):
+        """Inject additional missing class associations directly into the IFC file."""
+        if not element_class_map:
+            return (False, "No classified elements found")
+        if not os.path.exists(ifc_path):
+            return (False, "IFC file not found")
+
+        with open(ifc_path, "r") as f:
+            content = f.read()
+
+        endsec_idx = content.upper().rfind("ENDSEC;")
+        if endsec_idx < 0:
+            return (False, "Invalid IFC structure: ENDSEC not found")
+
+        ids = [int(x) for x in re.findall(r"#(\d+)\s*=", content)]
+        next_id = (max(ids) + 1) if ids else 1
+
+        def _ifc_escape_text(value):
+            txt = safe_unicode(value)
+            out = []
+            for ch in txt:
+                try:
+                    code = ord(ch)
+                except Exception:
+                    code = 0
+                if ch == "'":
+                    out.append("''")
+                elif 32 <= code <= 126 and ch != "\\":
+                    out.append(ch)
+                else:
+                    out.append("\\X2\\{:04X}\\X0\\".format(code & 0xFFFF))
+            return u"".join(out)
+
+        def _ifc_literal_ascii(value):
+            txt = _ifc_escape_text(value).strip()
+            if not txt:
+                return "$"
+            return "'{}'".format(txt)
+
+        def _ifc_guid_22():
+            alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$"
+            num = uuid.uuid4().int
+            out = []
+            for _ in range(22):
+                out.append(alphabet[num & 63])
+                num >>= 6
+            return "".join(reversed(out))
+
+        # Map Revit element ids to IFC entity ids by the exported element name suffix.
+        entity_by_elem = {}
+        line_regex = re.compile(r"^\s*#(\d+)\s*=\s*IFC[A-Z0-9_]+\s*\((.*)\)\s*;\s*$", re.IGNORECASE)
+        for line in content.splitlines():
+            m = line_regex.match(line)
+            if not m:
+                continue
+            ent_id = int(m.group(1))
+            args = split_ifc_args(m.group(2))
+            if len(args) < 3:
+                continue
+            name_txt = ifc_unquote(args[2])
+            mm = re.search(r"(?:^|[:#\s])(\d+)\s*$", name_txt or "")
+            if not mm:
+                continue
+            try:
+                rid = int(mm.group(1))
+            except Exception:
+                continue
+            entity_by_elem.setdefault(rid, []).append(ent_id)
+
+        if not entity_by_elem:
+            return (False, "Could not map Revit element ids to IFC entities")
+
+        # Find IFC classification entity ids for each classification system.
+        cls_source_ids = {}
+        cls_regex = re.compile(r"^\s*#(\d+)\s*=\s*IFCCLASSIFICATION\s*\((.*)\)\s*;\s*$", re.IGNORECASE)
+        for line in content.splitlines():
+            m = cls_regex.match(line)
+            if not m:
+                continue
+            cls_id = m.group(1)
+            args = split_ifc_args(m.group(2))
+            if len(args) < 6:
+                continue
+            cls_name = ifc_unquote(args[3])
+            cls_loc = ifc_unquote(args[5])
+            for sd in all_systems_data:
+                d_name = sd.get("dict_name", "")
+                d_uri = sd.get("dict_uri", "")
+                if (d_uri and normalize_text(cls_loc) == normalize_text(d_uri)) or (d_name and normalize_text(cls_name) == normalize_text(d_name)):
+                    cls_source_ids[(normalize_text(d_name), normalize_text(d_uri))] = cls_id
+                    break
+
+        # Only inject the classes that are not already covered by the exporter's single system slot.
+        new_lines = []
+        rel_count = 0
+        ref_count = 0
+        for elem_id, cls_items in element_class_map.items():
+            try:
+                elem_id_int = int(elem_id)
+            except Exception:
+                continue
+            target_entities = entity_by_elem.get(elem_id_int, [])
+            if not target_entities:
+                continue
+            if not isinstance(cls_items, list):
+                continue
+
+            grouped = {}
+            for item in cls_items:
+                sys_key = (normalize_text(item.get("dict_name", "")), normalize_text(item.get("dict_uri", "")))
+                grouped.setdefault(sys_key, []).append(item)
+
+            for sys_key, items in grouped.items():
+                if len(items) <= 1:
+                    continue
+                src_id = cls_source_ids.get(sys_key)
+                if not src_id:
+                    continue
+
+                # Skip the last entry because it is the one the shared-parameter export path already writes.
+                for item in items[:-1]:
+                    code_val = safe_unicode(item.get("code", "")).strip()
+                    name_val = safe_unicode(item.get("name", "")).strip()
+                    class_uri_val = safe_unicode(item.get("class_uri", "")).strip()
+                    if not code_val or not class_uri_val:
+                        continue
+
+                    ref_id = next_id
+                    next_id += 1
+                    new_lines.append(
+                        "#{}=IFCCLASSIFICATIONREFERENCE({},{},{},#{});".format(
+                            ref_id,
+                            _ifc_literal_ascii(class_uri_val),
+                            _ifc_literal_ascii(code_val),
+                            _ifc_literal_ascii(name_val),
+                            src_id
+                        )
+                    )
+                    ref_count += 1
+
+                    for ent_id in target_entities:
+                        rel_id = next_id
+                        next_id += 1
+                        new_lines.append(
+                            "#{}=IFCRELASSOCIATESCLASSIFICATION({},$,$,$,(#{}),#{});".format(
+                                rel_id,
+                                _ifc_literal_ascii(_ifc_guid_22()),
+                                ent_id,
+                                ref_id
+                            )
+                        )
+                        rel_count += 1
+
+        if not new_lines:
+            return (False, "No additional classifications to inject")
+
+        injected = "\n".join(new_lines) + "\n"
+        updated = content[:endsec_idx] + injected + content[endsec_idx:]
+
+        with open(ifc_path, "w") as f:
+            f.write(updated)
+
+        return (True, "Injected {} class references in {} relations".format(ref_count, rel_count))
+
     def patch_element_params(all_systems_data, element_class_map):
         # SUPPORTED_PARAMS maps position → shared-parameter name used by the IFC exporter.
         SUPPORTED_PARAMS = ["ClassificationCode", "ClassificationCode(2)", "ClassificationCode(3)", "ClassificationCode(4)", "ClassificationCode(5)"]
@@ -842,6 +1270,7 @@ def main():
     systems = {}  # (dict_name, dict_uri) -> count
     classified_entries = []  # (dict_name, dict_uri, code, name, class_uri)
     element_class_map = {}  # element id int -> list of classification items
+    element_properties_map = {}  # element id int -> dict of class_uri -> property_sets
 
     all_ids = list(DB.FilteredElementCollector(doc).WhereElementIsNotElementType().ToElementIds())
     for eid in all_ids:
@@ -860,6 +1289,23 @@ def main():
                 continue
 
             element_class_map[eid.IntegerValue] = list(elem_items)
+            
+            # Try to load properties if available
+            try:
+                import sys
+                script_dir = os.path.dirname(__file__)
+                parent_dir = os.path.dirname(script_dir)
+                add_cls_dir = os.path.join(parent_dir, "02_AddClassification.pushbutton")
+                if add_cls_dir not in sys.path:
+                    sys.path.insert(0, add_cls_dir)
+                
+                import properties_editor as pe_export
+                elem_props = pe_export.load_all_class_properties(elem)
+                if elem_props:
+                    element_properties_map[eid.IntegerValue] = elem_props
+            except Exception:
+                # Properties module not available, skip
+                pass
 
             for item in elem_items:
                 dict_name = item.get("dict_name", "")
@@ -1022,7 +1468,12 @@ def main():
                 title="Export IFC"
             )
             return
-        forms.alert("IFC export completed successfully.", title="Export IFC")
+        
+        cls_ok, cls_msg = inject_classifications_into_ifc(out_path, element_class_map, all_systems_data)
+        props_ok, props_msg = inject_properties_into_ifc(out_path, element_properties_map)
+
+        msg = "IFC export completed successfully."
+        forms.alert(msg, title="Export IFC")
     else:
         forms.alert(
             "IFC export failed without a specific error message.",

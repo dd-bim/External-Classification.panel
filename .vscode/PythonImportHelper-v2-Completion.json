@@ -64,6 +64,14 @@
         "documentation": {}
     },
     {
+        "label": "forms",
+        "importPath": "pyrevit",
+        "description": "pyrevit",
+        "isExtraImport": true,
+        "detail": "pyrevit",
+        "documentation": {}
+    },
+    {
         "label": "clr",
         "kind": 6,
         "isExtraImport": true,
@@ -79,6 +87,58 @@
         "importPath": "System",
         "description": "System",
         "detail": "System",
+        "documentation": {}
+    },
+    {
+        "label": "Window",
+        "importPath": "System.Windows",
+        "description": "System.Windows",
+        "isExtraImport": true,
+        "detail": "System.Windows",
+        "documentation": {}
+    },
+    {
+        "label": "Application",
+        "importPath": "System.Windows",
+        "description": "System.Windows",
+        "isExtraImport": true,
+        "detail": "System.Windows",
+        "documentation": {}
+    },
+    {
+        "label": "json",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "json",
+        "description": "json",
+        "detail": "json",
+        "documentation": {}
+    },
+    {
+        "label": "copy",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "copy",
+        "description": "copy",
+        "detail": "copy",
+        "documentation": {}
+    },
+    {
+        "label": "properties_editor",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "properties_editor",
+        "description": "properties_editor",
+        "detail": "properties_editor",
+        "documentation": {}
+    },
+    {
+        "label": "properties_editor_dialog",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "properties_editor_dialog",
+        "description": "properties_editor_dialog",
+        "detail": "properties_editor_dialog",
         "documentation": {}
     },
     {
@@ -100,11 +160,20 @@
         "documentation": {}
     },
     {
+        "label": "get_stored_url",
+        "kind": 2,
+        "importPath": "01_SetURL.pushbutton.script",
+        "description": "01_SetURL.pushbutton.script",
+        "peekOfCode": "def get_stored_url():\n    schema = Schema.Lookup(SCHEMA_GUID)\n    if schema:\n        entity = doc.ProjectInformation.GetEntity(schema)\n        if entity and entity.IsValid():\n            field = schema.GetField(FIELD_NAME)\n            stored = entity.Get[System.String](field)\n            if stored:\n                return stored\n    return DEFAULT_URL",
+        "detail": "01_SetURL.pushbutton.script",
+        "documentation": {}
+    },
+    {
         "label": "set_url",
         "kind": 2,
         "importPath": "01_SetURL.pushbutton.script",
         "description": "01_SetURL.pushbutton.script",
-        "peekOfCode": "def set_url():\n    url = forms.ask_for_string(\n        get_stored_url(),\n        \"Enter the URL for the External Classification API\"\n    )\n    if url:\n        schema = get_or_create_schema()\n        field = schema.GetField(FIELD_NAME)\n        entity = Entity(schema)\n        entity.Set[System.String](field, url)",
+        "peekOfCode": "def set_url():\n    xaml_string = \"\"\"<Window xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n        xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n        Title=\"Set BSDD URL\" Height=\"220\" Width=\"450\"\n        WindowStartupLocation=\"CenterScreen\"\n        ResizeMode=\"NoResize\"\n        Background=\"#F5F5F5\">\n    <Grid Margin=\"15\">\n        <StackPanel VerticalAlignment=\"Stretch\">\n            <TextBlock Text=\"External Classification API URL:\" FontSize=\"12\" FontWeight=\"Bold\" Margin=\"0,0,0,8\"/>",
         "detail": "01_SetURL.pushbutton.script",
         "documentation": {}
     },
@@ -113,7 +182,7 @@
         "kind": 5,
         "importPath": "01_SetURL.pushbutton.script",
         "description": "01_SetURL.pushbutton.script",
-        "peekOfCode": "__title__ = \"Set URL\"\n__doc__ = \"Set URL for External Classification API\"\nfrom Autodesk.Revit.DB import Transaction\nfrom Autodesk.Revit.DB.ExtensibleStorage import Schema, SchemaBuilder, Entity, AccessLevel\nfrom pyrevit import forms\nimport clr\nclr.AddReference('System')\nimport System\ndoc = __revit__.ActiveUIDocument.Document\nSCHEMA_GUID = System.Guid(\"12345678-1234-1234-1234-1234567890ab\")",
+        "peekOfCode": "__title__ = \"Set URL\"\n__doc__ = \"Set URL for External Classification API\"\nfrom Autodesk.Revit.DB import Transaction\nfrom Autodesk.Revit.DB.ExtensibleStorage import Schema, SchemaBuilder, Entity, AccessLevel\nfrom pyrevit import forms\nimport clr\nclr.AddReference('System')\nclr.AddReference('PresentationFramework')\nclr.AddReference('PresentationCore')\nclr.AddReference('System.Xaml')",
         "detail": "01_SetURL.pushbutton.script",
         "documentation": {}
     },
@@ -122,7 +191,7 @@
         "kind": 5,
         "importPath": "01_SetURL.pushbutton.script",
         "description": "01_SetURL.pushbutton.script",
-        "peekOfCode": "__doc__ = \"Set URL for External Classification API\"\nfrom Autodesk.Revit.DB import Transaction\nfrom Autodesk.Revit.DB.ExtensibleStorage import Schema, SchemaBuilder, Entity, AccessLevel\nfrom pyrevit import forms\nimport clr\nclr.AddReference('System')\nimport System\ndoc = __revit__.ActiveUIDocument.Document\nSCHEMA_GUID = System.Guid(\"12345678-1234-1234-1234-1234567890ab\")\nSCHEMA_NAME = \"DataDictionaryAPI\"",
+        "peekOfCode": "__doc__ = \"Set URL for External Classification API\"\nfrom Autodesk.Revit.DB import Transaction\nfrom Autodesk.Revit.DB.ExtensibleStorage import Schema, SchemaBuilder, Entity, AccessLevel\nfrom pyrevit import forms\nimport clr\nclr.AddReference('System')\nclr.AddReference('PresentationFramework')\nclr.AddReference('PresentationCore')\nclr.AddReference('System.Xaml')\nimport System",
         "detail": "01_SetURL.pushbutton.script",
         "documentation": {}
     },
@@ -131,7 +200,16 @@
         "kind": 5,
         "importPath": "01_SetURL.pushbutton.script",
         "description": "01_SetURL.pushbutton.script",
-        "peekOfCode": "doc = __revit__.ActiveUIDocument.Document\nSCHEMA_GUID = System.Guid(\"12345678-1234-1234-1234-1234567890ab\")\nSCHEMA_NAME = \"DataDictionaryAPI\"\nFIELD_NAME = \"APIUrl\"\ndef get_or_create_schema():\n    schema = Schema.Lookup(SCHEMA_GUID)\n    if not schema:\n        schema_builder = SchemaBuilder(SCHEMA_GUID)\n        schema_builder.SetSchemaName(SCHEMA_NAME)\n        schema_builder.SetReadAccessLevel(AccessLevel.Public)",
+        "peekOfCode": "doc = __revit__.ActiveUIDocument.Document\nDEFAULT_URL = \"https://api.bsdd.buildingsmart.org\"\nSCHEMA_GUID = System.Guid(\"12345678-1234-1234-1234-1234567890ab\")\nSCHEMA_NAME = \"DataDictionaryAPI\"\nFIELD_NAME = \"APIUrl\"\ndef get_or_create_schema():\n    schema = Schema.Lookup(SCHEMA_GUID)\n    if not schema:\n        schema_builder = SchemaBuilder(SCHEMA_GUID)\n        schema_builder.SetSchemaName(SCHEMA_NAME)",
+        "detail": "01_SetURL.pushbutton.script",
+        "documentation": {}
+    },
+    {
+        "label": "DEFAULT_URL",
+        "kind": 5,
+        "importPath": "01_SetURL.pushbutton.script",
+        "description": "01_SetURL.pushbutton.script",
+        "peekOfCode": "DEFAULT_URL = \"https://api.bsdd.buildingsmart.org\"\nSCHEMA_GUID = System.Guid(\"12345678-1234-1234-1234-1234567890ab\")\nSCHEMA_NAME = \"DataDictionaryAPI\"\nFIELD_NAME = \"APIUrl\"\ndef get_or_create_schema():\n    schema = Schema.Lookup(SCHEMA_GUID)\n    if not schema:\n        schema_builder = SchemaBuilder(SCHEMA_GUID)\n        schema_builder.SetSchemaName(SCHEMA_NAME)\n        schema_builder.SetReadAccessLevel(AccessLevel.Public)",
         "detail": "01_SetURL.pushbutton.script",
         "documentation": {}
     },
@@ -163,6 +241,159 @@
         "documentation": {}
     },
     {
+        "label": "get_last_store_error",
+        "kind": 2,
+        "importPath": "02_AddClassification.pushbutton.properties_editor",
+        "description": "02_AddClassification.pushbutton.properties_editor",
+        "peekOfCode": "def get_last_store_error():\n    \"\"\"Return last backend write error message for diagnostics.\"\"\"\n    return _LAST_STORE_ERROR\ndef _safe_unicode(value):\n    \"\"\"Convert value to unicode safely in IronPython/Python2 contexts.\"\"\"\n    def _from_bytes(raw):\n        try:\n            return raw.decode(\"utf-8\")\n        except Exception:\n            pass",
+        "detail": "02_AddClassification.pushbutton.properties_editor",
+        "documentation": {}
+    },
+    {
+        "label": "create_property_schema",
+        "kind": 2,
+        "importPath": "02_AddClassification.pushbutton.properties_editor",
+        "description": "02_AddClassification.pushbutton.properties_editor",
+        "peekOfCode": "def create_property_schema():\n    \"\"\"Create or retrieve the ExtensibleStorage schema for properties.\"\"\"\n    import clr\n    clr.AddReference('System')\n    import System\n    from Autodesk.Revit.DB.ExtensibleStorage import Schema, SchemaBuilder, AccessLevel\n    guid = System.Guid(_PROP_SCHEMA_GUID)\n    schema = Schema.Lookup(guid)\n    if schema:\n        return schema",
+        "detail": "02_AddClassification.pushbutton.properties_editor",
+        "documentation": {}
+    },
+    {
+        "label": "store_class_properties",
+        "kind": 2,
+        "importPath": "02_AddClassification.pushbutton.properties_editor",
+        "description": "02_AddClassification.pushbutton.properties_editor",
+        "peekOfCode": "def store_class_properties(elem, class_uri, property_data):\n    \"\"\"\n    Store property set data for a classification on an element.\n    Args:\n        elem: Revit Element\n        class_uri: Classification URI (key)\n        property_data: dict with structure:\n            {\n                \"property_sets\": [\n                    {",
+        "detail": "02_AddClassification.pushbutton.properties_editor",
+        "documentation": {}
+    },
+    {
+        "label": "load_class_properties",
+        "kind": 2,
+        "importPath": "02_AddClassification.pushbutton.properties_editor",
+        "description": "02_AddClassification.pushbutton.properties_editor",
+        "peekOfCode": "def load_class_properties(elem, class_uri):\n    \"\"\"Load property set data for a specific classification.\"\"\"\n    try:\n        all_props = load_all_class_properties(elem)\n        if class_uri in all_props:\n            return all_props.get(class_uri, {})\n        want = _safe_unicode(class_uri).strip().lower()\n        if not want:\n            return {}\n        for key, value in all_props.items():",
+        "detail": "02_AddClassification.pushbutton.properties_editor",
+        "documentation": {}
+    },
+    {
+        "label": "load_all_class_properties",
+        "kind": 2,
+        "importPath": "02_AddClassification.pushbutton.properties_editor",
+        "description": "02_AddClassification.pushbutton.properties_editor",
+        "peekOfCode": "def load_all_class_properties(elem):\n    \"\"\"Load all property data from element.\"\"\"\n    import clr\n    clr.AddReference('System')\n    import System\n    from Autodesk.Revit.DB.ExtensibleStorage import Schema\n    try:\n        schema = Schema.Lookup(System.Guid(_PROP_SCHEMA_GUID))\n        if not schema:\n            return {}",
+        "detail": "02_AddClassification.pushbutton.properties_editor",
+        "documentation": {}
+    },
+    {
+        "label": "delete_class_properties",
+        "kind": 2,
+        "importPath": "02_AddClassification.pushbutton.properties_editor",
+        "description": "02_AddClassification.pushbutton.properties_editor",
+        "peekOfCode": "def delete_class_properties(elem, class_uri):\n    \"\"\"Remove property data for a classification when it's deleted.\"\"\"\n    try:\n        all_props = load_all_class_properties(elem)\n        if not all_props:\n            return\n        target_key = None\n        if class_uri in all_props:\n            target_key = class_uri\n        else:",
+        "detail": "02_AddClassification.pushbutton.properties_editor",
+        "documentation": {}
+    },
+    {
+        "label": "build_property_tree",
+        "kind": 2,
+        "importPath": "02_AddClassification.pushbutton.properties_editor",
+        "description": "02_AddClassification.pushbutton.properties_editor",
+        "peekOfCode": "def build_property_tree(class_data):\n    \"\"\"\n    Extract and organize properties from class data into property sets.\n    Returns:\n        list of property sets, each with:\n        {\n            \"name\": \"PropertySet name\",\n            \"description\": \"...\",\n            \"properties\": [\n                {",
+        "detail": "02_AddClassification.pushbutton.properties_editor",
+        "documentation": {}
+    },
+    {
+        "label": "serialize_properties_for_storage",
+        "kind": 2,
+        "importPath": "02_AddClassification.pushbutton.properties_editor",
+        "description": "02_AddClassification.pushbutton.properties_editor",
+        "peekOfCode": "def serialize_properties_for_storage(property_sets):\n    \"\"\"Convert property tree to JSON-serializable format for storage.\"\"\"\n    return {\n        \"property_sets\": property_sets\n    }\ndef deserialize_properties_from_storage(stored_data):\n    \"\"\"Convert stored data back to property tree format.\"\"\"\n    return stored_data.get(\"property_sets\", [])\ndef get_property_summary(property_sets):\n    \"\"\"Generate a user-friendly summary of enabled properties and their values.\"\"\"",
+        "detail": "02_AddClassification.pushbutton.properties_editor",
+        "documentation": {}
+    },
+    {
+        "label": "deserialize_properties_from_storage",
+        "kind": 2,
+        "importPath": "02_AddClassification.pushbutton.properties_editor",
+        "description": "02_AddClassification.pushbutton.properties_editor",
+        "peekOfCode": "def deserialize_properties_from_storage(stored_data):\n    \"\"\"Convert stored data back to property tree format.\"\"\"\n    return stored_data.get(\"property_sets\", [])\ndef get_property_summary(property_sets):\n    \"\"\"Generate a user-friendly summary of enabled properties and their values.\"\"\"\n    summary = []\n    for pset in property_sets:\n        enabled_props = [p for p in pset.get(\"properties\", []) if p.get(\"enabled\")]\n        if enabled_props:\n            prop_names = [p[\"name\"] for p in enabled_props]",
+        "detail": "02_AddClassification.pushbutton.properties_editor",
+        "documentation": {}
+    },
+    {
+        "label": "get_property_summary",
+        "kind": 2,
+        "importPath": "02_AddClassification.pushbutton.properties_editor",
+        "description": "02_AddClassification.pushbutton.properties_editor",
+        "peekOfCode": "def get_property_summary(property_sets):\n    \"\"\"Generate a user-friendly summary of enabled properties and their values.\"\"\"\n    summary = []\n    for pset in property_sets:\n        enabled_props = [p for p in pset.get(\"properties\", []) if p.get(\"enabled\")]\n        if enabled_props:\n            prop_names = [p[\"name\"] for p in enabled_props]\n            summary.append(u\"{} ({} {})\".format(pset[\"name\"], len(enabled_props), \"property\" if len(enabled_props) == 1 else \"properties\"))\n    return u\"; \".join(summary) if summary else \"(no properties)\"\ndef collect_element_properties_for_export(elements):",
+        "detail": "02_AddClassification.pushbutton.properties_editor",
+        "documentation": {}
+    },
+    {
+        "label": "collect_element_properties_for_export",
+        "kind": 2,
+        "importPath": "02_AddClassification.pushbutton.properties_editor",
+        "description": "02_AddClassification.pushbutton.properties_editor",
+        "peekOfCode": "def collect_element_properties_for_export(elements):\n    \"\"\"\n    Collect property data from all elements for export.\n    Returns:\n        dict mapping element_id -> dict of (class_uri -> property_sets)\n    \"\"\"\n    result = {}\n    for elem in elements:\n        try:\n            all_props = load_all_class_properties(elem)",
+        "detail": "02_AddClassification.pushbutton.properties_editor",
+        "documentation": {}
+    },
+    {
+        "label": "convert_properties_to_ifc_propertyset_dict",
+        "kind": 2,
+        "importPath": "02_AddClassification.pushbutton.properties_editor",
+        "description": "02_AddClassification.pushbutton.properties_editor",
+        "peekOfCode": "def convert_properties_to_ifc_propertyset_dict(class_uri, property_data):\n    \"\"\"\n    Convert stored property data to IFC PropertySet structure.\n    This will be used by the IFC exporter to create IfcPropertySet and IfcPropertySingleValue entities.\n    Returns:\n        dict with IFC-compatible structure\n    \"\"\"\n    property_sets = property_data.get(\"property_sets\", [])\n    ifc_data = {}\n    for pset in property_sets:",
+        "detail": "02_AddClassification.pushbutton.properties_editor",
+        "documentation": {}
+    },
+    {
+        "label": "update_property_value",
+        "kind": 2,
+        "importPath": "02_AddClassification.pushbutton.properties_editor",
+        "description": "02_AddClassification.pushbutton.properties_editor",
+        "peekOfCode": "def update_property_value(elem, class_uri, pset_name, property_name, new_value):\n    \"\"\"\n    Update a single property value in storage.\n    Args:\n        elem: Revit Element\n        class_uri: Classification URI\n        pset_name: PropertySet name\n        property_name: Name of the property to update\n        new_value: New value to set\n    \"\"\"",
+        "detail": "02_AddClassification.pushbutton.properties_editor",
+        "documentation": {}
+    },
+    {
+        "label": "_PROP_SCHEMA_GUID",
+        "kind": 5,
+        "importPath": "02_AddClassification.pushbutton.properties_editor",
+        "description": "02_AddClassification.pushbutton.properties_editor",
+        "peekOfCode": "_PROP_SCHEMA_GUID = \"FEDCBA98-7654-3210-FEDC-BA9876543211\"\n_PROP_SCHEMA_NAME = \"ExternalClassificationProperties\"\n_LAST_STORE_ERROR = \"\"\ndef get_last_store_error():\n    \"\"\"Return last backend write error message for diagnostics.\"\"\"\n    return _LAST_STORE_ERROR\ndef _safe_unicode(value):\n    \"\"\"Convert value to unicode safely in IronPython/Python2 contexts.\"\"\"\n    def _from_bytes(raw):\n        try:",
+        "detail": "02_AddClassification.pushbutton.properties_editor",
+        "documentation": {}
+    },
+    {
+        "label": "_PROP_SCHEMA_NAME",
+        "kind": 5,
+        "importPath": "02_AddClassification.pushbutton.properties_editor",
+        "description": "02_AddClassification.pushbutton.properties_editor",
+        "peekOfCode": "_PROP_SCHEMA_NAME = \"ExternalClassificationProperties\"\n_LAST_STORE_ERROR = \"\"\ndef get_last_store_error():\n    \"\"\"Return last backend write error message for diagnostics.\"\"\"\n    return _LAST_STORE_ERROR\ndef _safe_unicode(value):\n    \"\"\"Convert value to unicode safely in IronPython/Python2 contexts.\"\"\"\n    def _from_bytes(raw):\n        try:\n            return raw.decode(\"utf-8\")",
+        "detail": "02_AddClassification.pushbutton.properties_editor",
+        "documentation": {}
+    },
+    {
+        "label": "_LAST_STORE_ERROR",
+        "kind": 5,
+        "importPath": "02_AddClassification.pushbutton.properties_editor",
+        "description": "02_AddClassification.pushbutton.properties_editor",
+        "peekOfCode": "_LAST_STORE_ERROR = \"\"\ndef get_last_store_error():\n    \"\"\"Return last backend write error message for diagnostics.\"\"\"\n    return _LAST_STORE_ERROR\ndef _safe_unicode(value):\n    \"\"\"Convert value to unicode safely in IronPython/Python2 contexts.\"\"\"\n    def _from_bytes(raw):\n        try:\n            return raw.decode(\"utf-8\")\n        except Exception:",
+        "detail": "02_AddClassification.pushbutton.properties_editor",
+        "documentation": {}
+    },
+    {
+        "label": "PropertyEditorDialog",
+        "kind": 6,
+        "importPath": "02_AddClassification.pushbutton.properties_editor_dialog",
+        "description": "02_AddClassification.pushbutton.properties_editor_dialog",
+        "peekOfCode": "class PropertyEditorDialog(forms.WPFWindow):\n    \"\"\"Dialog to configure properties for classified elements.\"\"\"\n    def __init__(self, doc, element_ids, class_data, dict_data):\n        import os\n        try:\n            import imp\n            imp.reload(pe)\n        except Exception:\n            pass\n        self._ready = False",
+        "detail": "02_AddClassification.pushbutton.properties_editor_dialog",
+        "documentation": {}
+    },
+    {
         "label": "main",
         "kind": 2,
         "importPath": "02_AddClassification.pushbutton.script",
@@ -176,7 +407,7 @@
         "kind": 5,
         "importPath": "02_AddClassification.pushbutton.script",
         "description": "02_AddClassification.pushbutton.script",
-        "peekOfCode": "__title__ = \"Add\\nClassification\"\n__doc__ = \"Add external classification to selected elements\"\nfrom pyrevit import forms\ndef main():\n    import clr\n    clr.AddReference('System')\n    import System\n    import os\n    import json as _json\n    from Autodesk.Revit.DB import Transaction, FilteredElementCollector, CategoryType, ElementId, BuiltInCategory",
+        "peekOfCode": "__title__ = \"Add\\nClassification\"\n__doc__ = \"Add external classification to selected elements\"\nfrom pyrevit import forms\nimport properties_editor as pe\nimport properties_editor_dialog as ped\ndef main():\n    import clr\n    clr.AddReference('System')\n    import System\n    import os",
         "detail": "02_AddClassification.pushbutton.script",
         "documentation": {}
     },
@@ -185,7 +416,7 @@
         "kind": 5,
         "importPath": "02_AddClassification.pushbutton.script",
         "description": "02_AddClassification.pushbutton.script",
-        "peekOfCode": "__doc__ = \"Add external classification to selected elements\"\nfrom pyrevit import forms\ndef main():\n    import clr\n    clr.AddReference('System')\n    import System\n    import os\n    import json as _json\n    from Autodesk.Revit.DB import Transaction, FilteredElementCollector, CategoryType, ElementId, BuiltInCategory\n    from Autodesk.Revit.UI.Selection import ObjectType",
+        "peekOfCode": "__doc__ = \"Add external classification to selected elements\"\nfrom pyrevit import forms\nimport properties_editor as pe\nimport properties_editor_dialog as ped\ndef main():\n    import clr\n    clr.AddReference('System')\n    import System\n    import os\n    import json as _json",
         "detail": "02_AddClassification.pushbutton.script",
         "documentation": {}
     },
