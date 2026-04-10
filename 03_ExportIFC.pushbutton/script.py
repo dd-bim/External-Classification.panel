@@ -11,6 +11,7 @@ def main():
     import uuid
     import datetime
     import json
+    import sys
     import clr
     clr.AddReference("System")
     clr.AddReference("System.Windows.Forms")
@@ -24,11 +25,21 @@ def main():
         from Autodesk.Revit.DB.ExtensibleStorage import DataStorage
     except ImportError:
         DataStorage = DB.DataStorage
+    script_dir = os.path.dirname(__file__)
+    parent_dir = os.path.dirname(script_dir)
+    add_cls_dir = os.path.join(parent_dir, "02_AddClassification.pushbutton")
+    if add_cls_dir not in sys.path:
+        sys.path.insert(0, add_cls_dir)
+    import shared_text_utils as text_utils
 
     try:
         text_type = unicode
     except NameError:
         text_type = str
+
+    safe_unicode = text_utils.safe_unicode
+    safe_query_value = text_utils.safe_query_value
+    _ifc_literal_ascii = text_utils.ifc_literal_ascii
 
     doc = __revit__.ActiveUIDocument.Document
 
@@ -74,18 +85,6 @@ def main():
         except Exception:
             pass
         return None
-
-    def safe_query_value(value):
-        try:
-            if value is None:
-                return ""
-            txt = text_type(value)
-            try:
-                return txt.encode("utf-8")
-            except Exception:
-                return txt
-        except Exception:
-            return ""
 
     def api_get_json(base_url, endpoint, params=None):
         import urllib2 as _ul
@@ -289,29 +288,6 @@ def main():
     def normalize_text(value):
         return (text_type(value or "").strip()).lower()
 
-    def safe_unicode(value):
-        try:
-            if value is None:
-                return u""
-            if isinstance(value, text_type):
-                return value
-            if hasattr(value, "ToString"):
-                value = value.ToString()
-            if isinstance(value, bytes):
-                try:
-                    return value.decode("utf-8")
-                except Exception:
-                    try:
-                        return value.decode("cp1252")
-                    except Exception:
-                        return value.decode("latin-1", "ignore")
-            return text_type(value)
-        except Exception:
-            try:
-                return text_type(value)
-            except Exception:
-                return u""
-
     def read_element_classifications(elem, legacy_schema=None, legacy_fields=None, multi_schema=None, multi_items_field=None):
         items = []
 
@@ -332,6 +308,10 @@ def main():
                                     "code": safe_unicode(p.get("code") or "").strip(),
                                     "name": safe_unicode(p.get("name") or "").strip(),
                                     "class_uri": safe_unicode(p.get("class_uri") or "").strip(),
+                                    "parent_class_uri": safe_unicode(p.get("parent_class_uri") or "").strip(),
+                                    "parent_class_code": safe_unicode(p.get("parent_class_code") or "").strip(),
+                                    "parent_class_name": safe_unicode(p.get("parent_class_name") or "").strip(),
+                                    "ancestor_classes": list(p.get("ancestor_classes") or []) if isinstance(p.get("ancestor_classes"), list) else [],
                                 })
         except Exception:
             items = []
@@ -351,6 +331,10 @@ def main():
                             "code": safe_unicode(code_val),
                             "name": safe_unicode(ent.Get[System.String](legacy_fields["Name"]) or ""),
                             "class_uri": safe_unicode(ent.Get[System.String](legacy_fields["ClassUri"]) or ""),
+                            "parent_class_uri": "",
+                            "parent_class_code": "",
+                            "parent_class_name": "",
+                            "ancestor_classes": [],
                         })
         except Exception:
             pass
@@ -375,120 +359,90 @@ def main():
                 return False
         return True
 
-    def collect_class_uri_maps_from_elements(dict_name, dict_uri, element_ids):
-        """
-        Extract ClassUri mappings directly from ExtensibleStorage of elements,
-        instead of querying the API. This is more robust because:
-        1. URIs are already saved when elements were classified
-        2. No API calls needed (no network/timeout issues)
-        3. Exactly the URIs that were used during classification are re-exported
-        """
-        by_code = {}
-        by_pair = {}
-        
-        _CLS_SCHEMA_GUID_STR = "ABCDEF12-3456-7890-ABCD-EF1234567890"
-        schema = Schema.Lookup(System.Guid(_CLS_SCHEMA_GUID_STR))
-        if not schema:
-            return by_code, by_pair
-        
-        code_field = schema.GetField("Code")
-        name_field = schema.GetField("Name")
-        class_uri_field = schema.GetField("ClassUri")
-        dict_name_field = schema.GetField("DictionaryName")
-        dict_uri_field = schema.GetField("DictionaryUri")
-        
-        if not (code_field and class_uri_field):
-            return by_code, by_pair
-        
-        for elem_id in element_ids:
-            try:
-                elem = doc.GetElement(elem_id)
-                if not elem or not elem.IsValidObject:
-                    continue
-                entity = elem.GetEntity(schema)
-                if not entity or not entity.IsValid():
-                    continue
-                
-                # Filter by dict_name and dict_uri to get URIs for THIS system only
-                stored_dict_name = safe_unicode(entity.Get[System.String](dict_name_field) if dict_name_field else "")
-                stored_dict_uri = safe_unicode(entity.Get[System.String](dict_uri_field) if dict_uri_field else "")
-                
-                # Match this element's system to the target system
-                if normalize_text(stored_dict_name) != normalize_text(dict_name):
-                    continue
-                if normalize_text(stored_dict_uri) != normalize_text(dict_uri):
-                    continue
-                
-                # Extract the URI mapping from this element
-                code_val = safe_unicode(entity.Get[System.String](code_field) if code_field else "")
-                name_val = safe_unicode(entity.Get[System.String](name_field) if name_field else "")
-                class_uri_val = safe_unicode(entity.Get[System.String](class_uri_field) if class_uri_field else "")
-                
-                code_val = (code_val or "").strip()
-                name_val = (name_val or "").strip()
-                class_uri_val = (class_uri_val or "").strip()
-                
-                if not code_val or not class_uri_val:
-                    continue
-                
-                code_key = normalize_text(code_val)
-                name_key = normalize_text(name_val)
-                
-                by_code[code_key] = class_uri_val
-                if name_key:
-                    by_pair[(code_key, name_key)] = class_uri_val
-            
-            except Exception:
-                pass
-        
-        return by_code, by_pair
+    class ExportSettingsDialog(forms.WPFWindow):
+        def __init__(self, config_names, info_url):
+            xaml_path = os.path.join(os.path.dirname(__file__), "export_settings_dialog.xaml")
+            forms.WPFWindow.__init__(self, xaml_path)
+            self._info_url = info_url
+            self.selected_profile = None
+            self.selected_mode = "flat"
 
-    def collect_class_uri_maps_from_api(dict_name, dict_uri):
-        by_code = {}
-        by_pair = {}
-        api_url = get_stored_api_url()
-        if not api_url:
-            return by_code, by_pair
-        if not dict_uri and not dict_name:
-            return by_code, by_pair
+            self.ProfileComboBox.Items.Clear()
+            if config_names:
+                for name in config_names:
+                    self.ProfileComboBox.Items.Add(name)
+                self.ProfileComboBox.SelectedIndex = 0
+            else:
+                self.ProfileComboBox.Items.Add("Default IFC 4")
+                self.ProfileComboBox.SelectedIndex = 0
+                self.ProfileComboBox.IsEnabled = False
 
-        def add_classes_from_payload(payload):
-            classes = payload.get("classes", []) if isinstance(payload, dict) else []
-            for c in classes:
-                code_val = safe_unicode(c.get("code") or c.get("referenceCode") or "").strip()
-                name_val = safe_unicode(c.get("name") or "").strip()
-                class_uri_val = safe_unicode(c.get("classUri") or c.get("uri") or "").strip()
-                if not code_val or not class_uri_val:
-                    continue
-                code_key = normalize_text(code_val)
-                name_key = normalize_text(name_val)
-                by_code[code_key] = class_uri_val
-                if name_key:
-                    by_pair[(code_key, name_key)] = class_uri_val
+            self.FlatRadio.IsChecked = True
 
-        if dict_uri:
+            # Bind in code as a reliable fallback for environments where XAML
+            # event hookup can be inconsistent.
             try:
-                add_classes_from_payload(api_get_json(api_url, "/api/Dictionary/v1/Classes", {"Uri": dict_uri}))
-            except Exception:
-                pass
-        if not by_code and dict_name:
-            try:
-                add_classes_from_payload(api_get_json(api_url, "/api/Dictionary/v1/Classes", {"Name": dict_name}))
+                self.InfoBtn.Click += self.InfoBtn_Click
             except Exception:
                 pass
 
-        return by_code, by_pair
+        def InfoBtn_Click(self, sender, args):
+            opened = False
+            try:
+                os.startfile(self._info_url)
+                opened = True
+            except Exception:
+                try:
+                    psi = System.Diagnostics.ProcessStartInfo(self._info_url)
+                    psi.UseShellExecute = True
+                    System.Diagnostics.Process.Start(psi)
+                    opened = True
+                except Exception:
+                    opened = False
 
-    def _choose_ifc_export_options():
+            if not opened:
+                forms.alert(
+                    u"Could not open documentation link:\n{}".format(self._info_url),
+                    title="Export IFC",
+                    warn_icon=True
+                )
+
+        def ContinueBtn_Click(self, sender, args):
+            try:
+                if self.ProfileComboBox.IsEnabled and self.ProfileComboBox.SelectedItem is not None:
+                    self.selected_profile = safe_unicode(self.ProfileComboBox.SelectedItem)
+                else:
+                    self.selected_profile = None
+            except Exception:
+                self.selected_profile = None
+
+            self.selected_mode = "hierarchical" if bool(self.HierarchicalRadio.IsChecked) else "flat"
+            self.DialogResult = True
+            self.Close()
+
+        def CancelBtn_Click(self, sender, args):
+            self.DialogResult = False
+            self.Close()
+
+    def _show_export_settings_dialog(config_names):
+        info_url = "https://standards.buildingsmart.org/IFC/RELEASE/IFC4_3/HTML/lexical/IfcClassificationReference.htm"
+
+        dlg = ExportSettingsDialog(config_names, info_url)
+        result = dlg.ShowDialog()
+        if not result:
+            return (None, None)
+        return (dlg.selected_profile, dlg.selected_mode)
+
+    def _choose_ifc_export_options_and_mode():
         """
         Tries to find the IFC Exporter add-in (IFCExporterUIOverride.dll, already
-        loaded in Revit's process) and shows a SelectFromList dialog with all
-        available export configurations (built-in + user-saved profiles).
+        loaded in Revit's process) and offers all available export configurations
+        (built-in + user-saved profiles).
         Applies the chosen profile to a fresh IFCExportOptions instance via
         IFCExportConfiguration.UpdateOptions().
 
         Falls back to basic IFC 4 options when the add-in is unavailable.
-        Returns None when the user cancels the profile selection.
+        Returns (None, None) when the user cancels.
         """
         import System
 
@@ -515,108 +469,58 @@ def main():
 
         base_opts = DB.IFCExportOptions()
 
-        if config_maps_type is None:
-            # IFC Exporter not found in AppDomain – warn and fall back to IFC 4.
-            forms.alert(
-                u"IFC Exporter configuration not found.\n\n"
-                u"The IFC export will use the built-in default (IFC 4).\n"
-                u"Make sure the IFC Exporter is active in Revit.",
-                title="Export IFC",
-                warn_icon=True
-            )
-            try:
-                base_opts.FileVersion = DB.IFCVersion.IFC4
-            except Exception:
-                pass
-            return base_opts
+        config_names = []
+        name_to_config = {}
 
-        try:
-            config_maps = config_maps_type()
+        if config_maps_type is not None:
+            try:
+                config_maps = config_maps_type()
 
-            # Populate with built-in and user-saved profiles.
-            try:
-                config_maps_type.GetMethod("AddBuiltInConfigurations").Invoke(config_maps, None)
-            except Exception:
-                pass
-            try:
-                m = config_maps_type.GetMethod("AddSavedConfigurations")
-                if m:
-                    params = m.GetParameters()
-                    if len(list(params)) == 1:
-                        m.Invoke(config_maps, [doc])
-                    else:
-                        m.Invoke(config_maps, None)
-            except Exception:
-                pass
+                # Populate with built-in and user-saved profiles.
+                try:
+                    config_maps_type.GetMethod("AddBuiltInConfigurations").Invoke(config_maps, None)
+                except Exception:
+                    pass
+                try:
+                    m = config_maps_type.GetMethod("AddSavedConfigurations")
+                    if m:
+                        params = m.GetParameters()
+                        if len(list(params)) == 1:
+                            m.Invoke(config_maps, [doc])
+                        else:
+                            m.Invoke(config_maps, None)
+                except Exception:
+                    pass
 
-            configs = list(config_maps.Values)
-            name_to_config = {str(c.Name): c for c in configs}
-            config_names = sorted(name_to_config.keys())
-        except Exception as e:
-            forms.alert(
-                u"Could not read IFC Exporter profiles:\n{}\n\n"
-                u"Falling back to IFC 4 defaults.".format(e),
-                title="Export IFC",
-                warn_icon=True
-            )
-            try:
-                base_opts.FileVersion = DB.IFCVersion.IFC4
+                configs = list(config_maps.Values)
+                name_to_config = {str(c.Name): c for c in configs}
+                config_names = sorted(name_to_config.keys())
             except Exception:
-                pass
-            return base_opts
+                config_names = []
+                name_to_config = {}
+
+        selected_name, export_mode = _show_export_settings_dialog(config_names)
+        if export_mode is None:
+            return (None, None)
 
         if not config_names:
-            return base_opts
+            try:
+                base_opts.FileVersion = DB.IFCVersion.IFC4
+            except Exception:
+                pass
+        elif selected_name:
+            try:
+                config = name_to_config[selected_name]
+                config.UpdateOptions(base_opts, doc.ActiveView.Id)
+            except Exception as e:
+                forms.alert(
+                    u"Could not apply profile '{}':\n{}\n\n"
+                    u"Exporting with default IFC options.".format(selected_name, e),
+                    title="Export IFC",
+                    warn_icon=True
+                )
 
-        selected_name = forms.SelectFromList.show(
-            config_names,
-            multiselect=False,
-            title="IFC Export Configuration",
-            button_name="Export"
-        )
-        if selected_name is None:
-            return None  # user cancelled
-
-        try:
-            config = name_to_config[selected_name]
-            config.UpdateOptions(base_opts, doc.ActiveView.Id)
-        except Exception as e:
-            forms.alert(
-                u"Could not apply profile '{}':\n{}\n\n"
-                u"Exporting with default IFC options.".format(selected_name, e),
-                title="Export IFC",
-                warn_icon=True
-            )
-
-        return base_opts
-
-    def export_properties_to_json(ifc_path, element_properties_map):
-        """
-        Export collected properties to a JSON file alongside the IFC.
-        
-        This allows properties to be imported into other tools for further processing.
-        """
-        if not element_properties_map:
-            return (False, "No properties to export")
-        
-        json_path = ifc_path.replace(".ifc", "_properties.json")
-        
-        # Build export structure
-        export_data = {
-            "ifc_file": os.path.basename(ifc_path),
-            "export_date": text_type(datetime.datetime.now().isoformat()),
-            "elements": {}
-        }
-        
-        for elem_id_int, props_by_class in element_properties_map.items():
-            export_data["elements"][str(elem_id_int)] = props_by_class
-        
-        try:
-            with open(json_path, "w") as f:
-                json.dump(export_data, f, indent=2)
-            return (True, json_path)
-        except Exception as ex:
-            return (False, str(ex))
+        return (base_opts, export_mode)
 
     def choose_ifc_output_path(default_doc_title):
         dialog = SaveFileDialog()
@@ -867,31 +771,6 @@ def main():
                 pass
             return txt
 
-        def _ifc_escape_text(value):
-            txt = _decode_storage_escapes(value)
-            out = []
-            for ch in txt:
-                try:
-                    code = ord(ch)
-                except Exception:
-                    code = 0
-
-                if ch == "'":
-                    out.append("''")
-                elif 32 <= code <= 126 and ch != "\\":
-                    out.append(ch)
-                else:
-                    # ISO-10303-21 / IFC string escape for non-ASCII text.
-                    out.append("\\X2\\{:04X}\\X0\\".format(code & 0xFFFF))
-
-            return u"".join(out)
-
-        def _ifc_literal_ascii(value):
-            txt = _ifc_escape_text(value).strip()
-            if not txt:
-                return "$"
-            return "'{}'".format(txt)
-
         # Best-effort mapping: Revit element id is typically at end of IFC element Name.
         # Example: "Basic Wall:Generic - 200mm:123456" -> element id 123456
         entity_by_elem = {}
@@ -1006,7 +885,7 @@ def main():
 
         return (True, "Injected {} property values in {} property sets ({} relations)".format(prop_count, pset_count, rel_count))
 
-    def inject_classifications_into_ifc(ifc_path, element_class_map, all_systems_data):
+    def inject_classifications_into_ifc(ifc_path, element_class_map, all_systems_data, export_mode="flat"):
         """Inject additional missing class associations directly into the IFC file."""
         if not element_class_map:
             return (False, "No classified elements found")
@@ -1022,28 +901,6 @@ def main():
 
         ids = [int(x) for x in re.findall(r"#(\d+)\s*=", content)]
         next_id = (max(ids) + 1) if ids else 1
-
-        def _ifc_escape_text(value):
-            txt = safe_unicode(value)
-            out = []
-            for ch in txt:
-                try:
-                    code = ord(ch)
-                except Exception:
-                    code = 0
-                if ch == "'":
-                    out.append("''")
-                elif 32 <= code <= 126 and ch != "\\":
-                    out.append(ch)
-                else:
-                    out.append("\\X2\\{:04X}\\X0\\".format(code & 0xFFFF))
-            return u"".join(out)
-
-        def _ifc_literal_ascii(value):
-            txt = _ifc_escape_text(value).strip()
-            if not txt:
-                return "$"
-            return "'{}'".format(txt)
 
         def _ifc_guid_22():
             alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$"
@@ -1098,7 +955,45 @@ def main():
                     cls_source_ids[(normalize_text(d_name), normalize_text(d_uri))] = cls_id
                     break
 
-        # Only inject the classes that are not already covered by the exporter's single system slot.
+        system_by_key = {}
+        for sd in all_systems_data:
+            k = (normalize_text(sd.get("dict_name", "")), normalize_text(sd.get("dict_uri", "")))
+            system_by_key[k] = sd
+
+        existing_ref_by_key = {}
+        ref_line_regex = re.compile(r"^\s*#(\d+)\s*=\s*IFCCLASSIFICATIONREFERENCE\s*\((.*)\)\s*;\s*$", re.IGNORECASE)
+        for line in content.splitlines():
+            m = ref_line_regex.match(line)
+            if not m:
+                continue
+            ref_id = m.group(1)
+            args = split_ifc_args(m.group(2))
+            if len(args) < 4:
+                continue
+            ref_uri = normalize_text(ifc_unquote(args[0]))
+            src = args[3].strip()
+            src_id = src.lstrip("#") if src.startswith("#") else src
+            if ref_uri and src_id:
+                existing_ref_by_key[(ref_uri, src_id)] = ref_id
+
+        existing_rel_pairs = set()
+        rel_line_regex = re.compile(r"^\s*#(\d+)\s*=\s*IFCRELASSOCIATESCLASSIFICATION\s*\((.*)\)\s*;\s*$", re.IGNORECASE)
+        for line in content.splitlines():
+            m = rel_line_regex.match(line)
+            if not m:
+                continue
+            args = split_ifc_args(m.group(2))
+            if len(args) < 6:
+                continue
+            related_arg = args[4] or ""
+            src = args[5].strip()
+            src_id = src.lstrip("#") if src.startswith("#") else src
+            if not src_id:
+                continue
+            for ent in re.findall(r"#(\d+)", related_arg):
+                existing_rel_pairs.add((ent, src_id))
+
+        # Inject additional references and relations while preserving existing export output.
         new_lines = []
         rel_count = 0
         ref_count = 0
@@ -1113,51 +1008,114 @@ def main():
             if not isinstance(cls_items, list):
                 continue
 
-            grouped = {}
             for item in cls_items:
                 sys_key = (normalize_text(item.get("dict_name", "")), normalize_text(item.get("dict_uri", "")))
-                grouped.setdefault(sys_key, []).append(item)
-
-            for sys_key, items in grouped.items():
-                if len(items) <= 1:
-                    continue
                 src_id = cls_source_ids.get(sys_key)
                 if not src_id:
-                    continue
-
-                # Skip the last entry because it is the one the shared-parameter export path already writes.
-                for item in items[:-1]:
-                    code_val = safe_unicode(item.get("code", "")).strip()
-                    name_val = safe_unicode(item.get("name", "")).strip()
-                    class_uri_val = safe_unicode(item.get("class_uri", "")).strip()
-                    if not code_val or not class_uri_val:
-                        continue
-
-                    ref_id = next_id
-                    next_id += 1
-                    new_lines.append(
-                        "#{}=IFCCLASSIFICATIONREFERENCE({},{},{},#{});".format(
-                            ref_id,
-                            _ifc_literal_ascii(class_uri_val),
-                            _ifc_literal_ascii(code_val),
-                            _ifc_literal_ascii(name_val),
-                            src_id
-                        )
-                    )
-                    ref_count += 1
-
-                    for ent_id in target_entities:
-                        rel_id = next_id
+                    sd = system_by_key.get(sys_key)
+                    if sd:
+                        src_id = str(next_id)
                         next_id += 1
+                        cls_source_ids[sys_key] = src_id
+                        cls_edition = ifc_literal(sd.get("edition"))
+                        cls_edition_date = ifc_literal(sd.get("edition_date_text"))
                         new_lines.append(
-                            "#{}=IFCRELASSOCIATESCLASSIFICATION({},$,$,$,(#{}),#{});".format(
-                                rel_id,
-                                _ifc_literal_ascii(_ifc_guid_22()),
-                                ent_id,
-                                ref_id
+                            "#{}=IFCCLASSIFICATION($,{},{},{},$,{},$);".format(
+                                src_id,
+                                cls_edition,
+                                cls_edition_date,
+                                _ifc_literal_ascii(sd.get("dict_name", "")),
+                                _ifc_literal_ascii(sd.get("dict_uri", ""))
                             )
                         )
-                        rel_count += 1
+                    else:
+                        continue
+
+                class_uri_val = safe_unicode(item.get("class_uri", "")).strip()
+                if not class_uri_val:
+                    continue
+
+                chain = []
+                if export_mode == "hierarchical":
+                    raw_ancestors = item.get("ancestor_classes") or []
+                    if isinstance(raw_ancestors, list):
+                        for ancestor in raw_ancestors:
+                            if not isinstance(ancestor, dict):
+                                continue
+                            a_uri = safe_unicode(ancestor.get("uri", "")).strip()
+                            if not a_uri:
+                                continue
+                            chain.append({
+                                "uri": a_uri,
+                                "code": safe_unicode(ancestor.get("code", "")).strip(),
+                                "name": safe_unicode(ancestor.get("name", "")).strip(),
+                            })
+
+                    if not chain:
+                        p_uri = safe_unicode(item.get("parent_class_uri", "")).strip()
+                        if p_uri:
+                            chain.append({
+                                "uri": p_uri,
+                                "code": safe_unicode(item.get("parent_class_code", "")).strip(),
+                                "name": safe_unicode(item.get("parent_class_name", "")).strip(),
+                            })
+
+                # Leaf is always present. In flat mode this is the only node.
+                chain.append({
+                    "uri": class_uri_val,
+                    "code": safe_unicode(item.get("code", "")).strip(),
+                    "name": safe_unicode(item.get("name", "")).strip(),
+                })
+
+                chain_src = str(src_id)
+                leaf_ref_id = None
+                for node in chain:
+                    node_uri = safe_unicode(node.get("uri", "")).strip()
+                    if not node_uri:
+                        continue
+
+                    ref_key = (normalize_text(node_uri), chain_src)
+                    ref_id = existing_ref_by_key.get(ref_key)
+
+                    if not ref_id:
+                        ref_id = str(next_id)
+                        next_id += 1
+                        node_name = safe_unicode(node.get("name", "")).strip()
+                        node_code = safe_unicode(node.get("code", "")).strip()
+                        new_lines.append(
+                            "#{}=IFCCLASSIFICATIONREFERENCE({},{},{},#{},$,$);".format(
+                                ref_id,
+                                _ifc_literal_ascii(node_uri),
+                                _ifc_literal_ascii(node_code),
+                                _ifc_literal_ascii(node_name),
+                                chain_src
+                            )
+                        )
+                        existing_ref_by_key[ref_key] = ref_id
+                        ref_count += 1
+
+                    leaf_ref_id = ref_id
+                    chain_src = ref_id
+
+                if not leaf_ref_id:
+                    continue
+
+                for ent_id in target_entities:
+                    rel_key = (str(ent_id), str(leaf_ref_id))
+                    if rel_key in existing_rel_pairs:
+                        continue
+                    rel_id = next_id
+                    next_id += 1
+                    new_lines.append(
+                        "#{}=IFCRELASSOCIATESCLASSIFICATION({},$,$,$,(#{}),#{});".format(
+                            rel_id,
+                            _ifc_literal_ascii(_ifc_guid_22()),
+                            ent_id,
+                            leaf_ref_id
+                        )
+                    )
+                    existing_rel_pairs.add(rel_key)
+                    rel_count += 1
 
         if not new_lines:
             return (False, "No additional classifications to inject")
@@ -1170,7 +1128,7 @@ def main():
 
         return (True, "Injected {} class references in {} relations".format(ref_count, rel_count))
 
-    def patch_element_params(all_systems_data, element_class_map):
+    def patch_element_params(all_systems_data, element_class_map, write_values=True):
         # SUPPORTED_PARAMS maps position → shared-parameter name used by the IFC exporter.
         SUPPORTED_PARAMS = ["ClassificationCode", "ClassificationCode(2)", "ClassificationCode(3)", "ClassificationCode(4)", "ClassificationCode(5)"]
         # (dict_name, dict_uri) → the shared parameter it should be written to
@@ -1224,6 +1182,10 @@ def main():
                 # Reset the export slots to avoid stale values from previous assignments.
                 for pname in SUPPORTED_PARAMS:
                     set_all_named_params(elem, pname, "")
+
+                # In hierarchical mode we only clear slots to avoid duplicate flat links.
+                if not write_values:
+                    continue
 
                 # Write every classification item of this element to the mapped slot.
                 for cls_item in cls_items:
@@ -1389,19 +1351,30 @@ def main():
             "param_name":         PARAM_NAMES[i],
         })
 
-    # 3) Choose export target in a single save dialog.
+    # 3) Choose export profile + classification mode in one compact dialog.
+    opts, export_mode = _choose_ifc_export_options_and_mode()
+    if opts is None or export_mode is None:
+        return  # user cancelled
+
+    # 4) Choose export target in a single save dialog.
     out_path = choose_ifc_output_path(doc.Title)
     if not out_path:
         return
     export_folder = os.path.dirname(out_path)
     base_name = os.path.splitext(os.path.basename(out_path))[0]
 
-    # 4) Update IFC-relevant data in the model.
+    # 5) Update IFC-relevant data in the model.
     # Exporter reads IfcClassification from official IFCClassification extensible storage.
     try:
+        # Always clear slot parameters to remove stale exporter mappings.
+        # Only flat mode writes values back to those slots.
         tx_patch = DB.Transaction(doc, "Prepare External Classification IFC Parameters")
         tx_patch.Start()
-        patch_element_params(all_systems_data, element_class_map)
+        patch_element_params(
+            all_systems_data,
+            element_class_map,
+            write_values=(export_mode == "flat")
+        )
         tx_patch.Commit()
 
         tx_storage = DB.Transaction(doc, "Prepare External Classification IFC Storage")
@@ -1424,13 +1397,6 @@ def main():
             title="Export IFC"
         )
         return
-
-    # 5) Set IFC export options.
-    # Let the user choose one of the IFC Exporter add-in profiles. All settings
-    # (IFC version, view filter, property sets, etc.) come from that profile.
-    opts = _choose_ifc_export_options()
-    if opts is None:
-        return  # user cancelled profile selection
 
     # 6) Execute export.
     # Some IFC exporter versions require a temporary open transaction.
@@ -1469,7 +1435,12 @@ def main():
             )
             return
         
-        cls_ok, cls_msg = inject_classifications_into_ifc(out_path, element_class_map, all_systems_data)
+        cls_ok, cls_msg = inject_classifications_into_ifc(
+            out_path,
+            element_class_map,
+            all_systems_data,
+            export_mode=export_mode
+        )
         props_ok, props_msg = inject_properties_into_ifc(out_path, element_properties_map)
 
         msg = "IFC export completed successfully."

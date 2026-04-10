@@ -10,7 +10,6 @@ clr.AddReference('PresentationFramework')
 clr.AddReference('PresentationCore')
 clr.AddReference('System.Xaml')
 import System
-from System.Windows import Window, Application
 
 doc = __revit__.ActiveUIDocument.Document
 
@@ -98,8 +97,6 @@ def set_url():
                     t.Start()
                     doc.ProjectInformation.SetEntity(entity)
                     t.Commit()
-                
-                forms.alert("URL set successfully!", title="Success")
                 window.Close()
             else:
                 forms.alert("Please enter a valid URL.", title="Error")

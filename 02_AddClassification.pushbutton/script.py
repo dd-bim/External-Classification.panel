@@ -5,6 +5,8 @@ __doc__ = "Add external classification to selected elements"
 from pyrevit import forms
 import properties_editor as pe
 import properties_editor_dialog as ped
+import threading
+import shared_text_utils as text_utils
 
 
 def main():
@@ -33,30 +35,9 @@ def main():
     def normalize_text(value):
         return (value or "").strip().lower()
 
-    def safe_unicode(value):
-        try:
-            if value is None:
-                return u""
-            if isinstance(value, unicode):
-                return value
-            if isinstance(value, System.String):
-                return u"{}".format(value)
-            if isinstance(value, str):
-                try:
-                    return value.decode("utf-8")
-                except Exception:
-                    try:
-                        return value.decode("cp1252")
-                    except Exception:
-                        return value.decode("latin-1", "ignore")
-            if hasattr(value, "ToString"):
-                return u"{}".format(value.ToString())
-            return u"{}".format(value)
-        except Exception:
-            try:
-                return u"{}".format(value)
-            except Exception:
-                return u""
+    safe_unicode = text_utils.safe_unicode
+    safe_query_value = text_utils.safe_query_value
+    decode_escaped_text = text_utils.decode_escaped_text
 
     def safe_json_dumps(obj):
         def normalize(item):
@@ -78,13 +59,6 @@ def main():
             return safe_unicode(item)
 
         return _json.dumps(normalize(obj), ensure_ascii=True)
-
-    def safe_query_value(value):
-        txt = safe_unicode(value)
-        try:
-            return txt.encode("utf-8")
-        except Exception:
-            return txt
 
     def get_stored_url():
         schema = Schema.Lookup(System.Guid(_URL_SCHEMA_GUID_STR))
@@ -143,6 +117,10 @@ def main():
                                     "class_uri": safe_unicode(p.get("class_uri") or "").strip(),
                                     "dict_name": safe_unicode(p.get("dict_name") or "").strip(),
                                     "dict_uri": safe_unicode(p.get("dict_uri") or "").strip(),
+                                    "parent_class_uri": safe_unicode(p.get("parent_class_uri") or "").strip(),
+                                    "parent_class_code": safe_unicode(p.get("parent_class_code") or "").strip(),
+                                    "parent_class_name": safe_unicode(p.get("parent_class_name") or "").strip(),
+                                    "ancestor_classes": list(p.get("ancestor_classes") or []) if isinstance(p.get("ancestor_classes"), list) else [],
                                 })
         except Exception:
             items = []
@@ -162,6 +140,10 @@ def main():
                             "class_uri": safe_unicode(ent.Get[System.String](legacy_fields["ClassUri"]) or ""),
                             "dict_name": safe_unicode(ent.Get[System.String](legacy_fields["DictionaryName"]) or ""),
                             "dict_uri": safe_unicode(ent.Get[System.String](legacy_fields["DictionaryUri"]) or ""),
+                            "parent_class_uri": "",
+                            "parent_class_code": "",
+                            "parent_class_name": "",
+                            "ancestor_classes": [],
                         })
         except Exception:
             pass
@@ -177,6 +159,20 @@ def main():
             code = safe_unicode(it.get("code") or "").strip()
             name = safe_unicode(it.get("name") or "").strip()
             class_uri = safe_unicode(it.get("class_uri") or "").strip()
+            parent_class_uri = safe_unicode(it.get("parent_class_uri") or "").strip()
+            parent_class_code = safe_unicode(it.get("parent_class_code") or "").strip()
+            parent_class_name = safe_unicode(it.get("parent_class_name") or "").strip()
+            raw_ancestors = it.get("ancestor_classes") or []
+            ancestor_classes = []
+            if isinstance(raw_ancestors, list):
+                for ancestor in raw_ancestors:
+                    if not isinstance(ancestor, dict):
+                        continue
+                    ancestor_classes.append({
+                        "uri": safe_unicode(ancestor.get("uri") or "").strip(),
+                        "code": safe_unicode(ancestor.get("code") or "").strip(),
+                        "name": safe_unicode(ancestor.get("name") or "").strip(),
+                    })
             if not code or not d_name:
                 continue
             key = (normalize_text(d_name), normalize_text(d_uri), normalize_text(code), normalize_text(name), normalize_text(class_uri))
@@ -189,6 +185,10 @@ def main():
                 "class_uri": class_uri,
                 "dict_name": d_name,
                 "dict_uri": d_uri,
+                "parent_class_uri": parent_class_uri,
+                "parent_class_code": parent_class_code,
+                "parent_class_name": parent_class_name,
+                "ancestor_classes": ancestor_classes,
             })
 
         if multi_schema and multi_items_field:
@@ -207,25 +207,6 @@ def main():
             ent.Set[System.String](legacy_fields["DictionaryUri"], latest.get("dict_uri") or "")
             elem.SetEntity(ent)
 
-    def store_classification(elem, code, name, class_uri, dict_name, dict_uri, schema=None, fields=None):
-        schema = schema or get_or_create_cls_schema()
-        fields = fields or {
-            "Code": schema.GetField("Code"),
-            "Name": schema.GetField("Name"),
-            "ClassUri": schema.GetField("ClassUri"),
-            "DictionaryName": schema.GetField("DictionaryName"),
-            "DictionaryUri": schema.GetField("DictionaryUri"),
-        }
-        entity = Entity(schema)
-        entity.Set[System.String](fields["Code"], code or "")
-        entity.Set[System.String](fields["Name"], name or "")
-        entity.Set[System.String](fields["ClassUri"], class_uri or "")
-        entity.Set[System.String](fields["DictionaryName"], dict_name or "")
-        entity.Set[System.String](fields["DictionaryUri"], dict_uri or "")
-        elem.SetEntity(entity)
-        # Keep Add Classification stable by writing only ExtensibleStorage.
-        # IFC/shared parameters are generated from stored classification during export.
-
     def is_camera_element(elem):
         """Return True for Revit camera elements (3D view cameras)."""
         try:
@@ -242,6 +223,10 @@ def main():
         code      = safe_unicode((cls_data or {}).get("code", (cls_data or {}).get("referenceCode", "")))
         name      = safe_unicode((cls_data or {}).get("name", ""))
         class_uri = safe_unicode((cls_data or {}).get("classUri", (cls_data or {}).get("uri", "")))
+        parent_class_uri = safe_unicode((cls_data or {}).get("_parentClassUri", (cls_data or {}).get("parentClassUri", "")))
+        parent_class_code = safe_unicode((cls_data or {}).get("_parentClassCode", (cls_data or {}).get("parentClassCode", "")))
+        parent_class_name = safe_unicode((cls_data or {}).get("_parentClassName", (cls_data or {}).get("parentClassName", "")))
+        ancestor_classes = list((cls_data or {}).get("_ancestorClasses", []) or [])
         dict_name = safe_unicode(dict_name)
         dict_uri  = safe_unicode(dict_uri)
 
@@ -270,13 +255,6 @@ def main():
 
         target_dict_uri_norm = normalize_text(dict_uri)
         target_dict_name_norm = normalize_text(dict_name)
-
-        def same_system(item):
-            item_uri_norm = normalize_text(item.get("dict_uri", ""))
-            item_name_norm = normalize_text(item.get("dict_name", ""))
-            if target_dict_uri_norm and item_uri_norm:
-                return item_uri_norm == target_dict_uri_norm
-            return item_name_norm == target_dict_name_norm
 
         def same_class(item):
             item_class_uri = normalize_text(item.get("class_uri", ""))
@@ -308,6 +286,10 @@ def main():
                         "class_uri": class_uri or "",
                         "dict_name": dict_name or "",
                         "dict_uri": dict_uri or "",
+                        "parent_class_uri": parent_class_uri or "",
+                        "parent_class_code": parent_class_code or "",
+                        "parent_class_name": parent_class_name or "",
+                        "ancestor_classes": ancestor_classes,
                     })
                     store_element_classifications(
                         elem,
@@ -335,7 +317,12 @@ def main():
     class ClassItem(object):
         def __init__(self, data):
             self.data            = data
-            self.name            = safe_unicode(data.get("name", "") or "")
+            depth = int(data.get("_depth", 0) or 0)
+            raw_name = safe_unicode(data.get("name", "") or "")
+            if depth > 0:
+                self.name = u"{}↳ {}".format(u"   " * depth, raw_name)
+            else:
+                self.name = raw_name
             self.code            = safe_unicode(data.get("code", data.get("referenceCode", "")) or "")
             self.descriptionPart = safe_unicode(data.get("descriptionPart", "") or "")
         def ToString(self):
@@ -392,8 +379,118 @@ def main():
     # to avoid repeated API calls when the dialog is reopened.
     session_cache = {
         "dicts": None,
-        "classes_by_uri": {}
+        "classes_by_uri": {},
+        "class_details_by_key": {},
+        "no_properties_keys": set(),
+        "prefetch_inflight_keys": set(),
     }
+
+    def _extract_class_detail_candidate(payload_obj):
+        if isinstance(payload_obj, dict):
+            cps = payload_obj.get("classProperties", []) or []
+            if isinstance(cps, list):
+                return payload_obj
+
+            classes = payload_obj.get("classes", []) or []
+            if isinstance(classes, list):
+                for c in classes:
+                    if isinstance(c, dict) and isinstance(c.get("classProperties", []), list):
+                        return c
+
+        if isinstance(payload_obj, list):
+            for c in payload_obj:
+                if isinstance(c, dict) and isinstance(c.get("classProperties", []), list):
+                    return c
+        return None
+
+    def _query_class_detail_payload(class_uri, dict_uri, timeout_sec=8):
+        import urllib2 as _ul
+        import urllib as _ulbase
+        import json as _json
+
+        endpoints = [
+            url.rstrip("/") + "/api/Class/v1",
+            url.rstrip("/") + "/api/Class/v1/",
+        ]
+
+        attempts = []
+        p1 = {"Uri": class_uri, "IncludeClassProperties": "true"}
+        if dict_uri:
+            p1["DictionaryUri"] = dict_uri
+        attempts.append(p1)
+        attempts.append({"Uri": class_uri, "IncludeClassProperties": "true"})
+        attempts.append({"ClassUri": class_uri, "IncludeClassProperties": "true"})
+
+        best_payload = None
+        best_count = 0
+        saw_explicit_empty = False
+
+        for endpoint in endpoints:
+            for params in attempts:
+                try:
+                    safe = {}
+                    for k, v in params.items():
+                        safe[safe_query_value(k)] = safe_query_value(v)
+
+                    full = endpoint + "?" + _ulbase.urlencode(safe)
+                    resp = _ul.urlopen(full.encode("utf-8") if isinstance(full, unicode) else full, timeout=timeout_sec)
+                    raw = resp.read()
+
+                    payload = None
+                    try:
+                        payload = _json.loads(raw.decode("utf-8"))
+                    except Exception:
+                        try:
+                            payload = _json.loads(raw)
+                        except Exception:
+                            payload = None
+
+                    candidate = _extract_class_detail_candidate(payload)
+                    if not isinstance(candidate, dict):
+                        continue
+
+                    count = len(list(candidate.get("classProperties", []) or []))
+                    if count == 0:
+                        saw_explicit_empty = True
+                    if best_payload is None or count > best_count:
+                        best_payload = candidate
+                        best_count = count
+                    if count > 0:
+                        return best_payload, best_count, saw_explicit_empty
+                except Exception:
+                    pass
+
+        return best_payload, best_count, saw_explicit_empty
+
+    def _get_class_detail_cached(class_uri, dict_uri, allow_network=True, timeout_sec=8):
+        cache_key = u"{}|{}".format(
+            normalize_text(dict_uri or ""),
+            normalize_text(class_uri or "")
+        )
+
+        details_cache = session_cache.setdefault("class_details_by_key", {})
+        no_props_cache = session_cache.setdefault("no_properties_keys", set())
+
+        if cache_key in no_props_cache:
+            return "no-properties", None, cache_key
+
+        cached_detail = details_cache.get(cache_key)
+        if isinstance(cached_detail, dict):
+            return "cached", cached_detail, cache_key
+
+        if not allow_network:
+            return "none", None, cache_key
+
+        payload, count, saw_explicit_empty = _query_class_detail_payload(class_uri, dict_uri, timeout_sec=timeout_sec)
+        if isinstance(payload, dict) and count > 0:
+            details_cache[cache_key] = dict(payload)
+            return "fetched", payload, cache_key
+
+        if saw_explicit_empty:
+            no_props_cache.add(cache_key)
+            return "no-properties", None, cache_key
+
+        return "none", None, cache_key
 
     class ClassificationDialog(forms.WPFWindow):
         def __init__(self, preselected_dict_uri=None):
@@ -429,6 +526,42 @@ def main():
 
         def _set_status(self, msg):
             self.StatusText.Text = msg
+
+        def _prefetch_selected_class_details(self, cls_data):
+            try:
+                class_uri = safe_unicode((cls_data or {}).get("uri", (cls_data or {}).get("classUri", ""))).strip()
+                if not class_uri:
+                    return
+
+                idx = self.DictionaryComboBox.SelectedIndex
+                dict_data = self._dicts[idx] if (idx >= 0 and idx < len(self._dicts)) else {}
+                dict_uri = safe_unicode((dict_data or {}).get("uri", "")).strip()
+
+                status, _, cache_key = _get_class_detail_cached(class_uri, dict_uri, allow_network=False)
+                if status in ("cached", "no-properties"):
+                    return
+
+                inflight = session_cache.setdefault("prefetch_inflight_keys", set())
+                if cache_key in inflight:
+                    return
+                inflight.add(cache_key)
+
+                def _worker():
+                    try:
+                        _get_class_detail_cached(class_uri, dict_uri, allow_network=True, timeout_sec=6)
+                    except Exception:
+                        pass
+                    finally:
+                        try:
+                            inflight.discard(cache_key)
+                        except Exception:
+                            pass
+
+                th = threading.Thread(target=_worker)
+                th.daemon = True
+                th.start()
+            except Exception:
+                pass
 
         def _load_dictionaries(self):
             self._set_status("Loading dictionaries...")
@@ -482,16 +615,52 @@ def main():
                 classes_by_uri = session_cache.setdefault("classes_by_uri", {})
                 classes = classes_by_uri.get(dict_uri)
                 if classes is None:
-                    result = self._get("/api/Dictionary/v1/Classes", {"Uri": dict_uri})
-                    classes = result.get("classes", []) if isinstance(result, dict) else []
-                    classes.sort(key=lambda c: safe_unicode(c.get("name") or u"").lower())
+                    result = self._get("/api/Dictionary/v1/Classes", {"Uri": dict_uri, "UseNestedClasses": "true"})
+                    root_classes = result.get("classes", []) if isinstance(result, dict) else []
+                    classes = self._flatten_classes(root_classes)
+                    if not any((c.get("_depth", 0) or 0) > 0 for c in classes):
+                        classes.sort(key=lambda c: safe_unicode(c.get("name") or u"").lower())
                     classes_by_uri[dict_uri] = classes
                 self._all_classes = classes
                 self._populate_list(classes)
                 self.SearchBox.IsEnabled = True
-                self._set_status("Loaded {} classes.".format(len(classes)))
+                has_nested = any((c.get("_depth", 0) or 0) > 0 for c in classes)
+                if has_nested:
+                    self._set_status("Loaded {} classes (nested hierarchy).".format(len(classes)))
+                else:
+                    self._set_status("Loaded {} classes.".format(len(classes)))
             except Exception as ex:
                 self._set_status("Error: {}".format(ex))
+
+        def _flatten_classes(self, classes, depth=0, parent=None, ancestors=None):
+            flat = []
+            ancestors = list(ancestors or [])
+            for cls in list(classes or []):
+                if not isinstance(cls, dict):
+                    continue
+
+                entry = dict(cls)
+                entry["_depth"] = int(depth)
+                entry["_parentClassUri"] = safe_unicode((parent or {}).get("uri") or "") if parent else ""
+                entry["_parentClassCode"] = safe_unicode((parent or {}).get("code") or "") if parent else ""
+                entry["_parentClassName"] = safe_unicode((parent or {}).get("name") or "") if parent else ""
+                entry["_ancestorClasses"] = list(ancestors)
+                flat.append(entry)
+
+                node = {
+                    "uri": safe_unicode(cls.get("uri") or cls.get("classUri") or ""),
+                    "code": safe_unicode(cls.get("code") or cls.get("referenceCode") or ""),
+                    "name": safe_unicode(cls.get("name") or ""),
+                }
+                next_ancestors = list(ancestors)
+                if node.get("uri"):
+                    next_ancestors.append(node)
+
+                children = cls.get("children", []) or []
+                if isinstance(children, list) and children:
+                    flat.extend(self._flatten_classes(children, depth + 1, cls, next_ancestors))
+
+            return flat
 
         def _populate_list(self, classes):
             self.ClassListBox.Items.Clear()
@@ -747,15 +916,22 @@ def main():
                 self.DetailName.Text = safe_unicode(d.get("name", ""))
                 self.DetailUri.Text  = safe_unicode(d.get("classUri", d.get("uri", "")))
                 self.ClassDetailPanel.Visibility = System.Windows.Visibility.Visible
+                self._prefetch_selected_class_details(d)
             else:
                 self.ClassDetailPanel.Visibility = System.Windows.Visibility.Collapsed
+
+        def _should_open_properties(self):
+            try:
+                return bool(self.AutoOpenPropertiesCheckBox.IsChecked)
+            except Exception:
+                return True
 
         def AssignToSelection_Click(self, sender, args):
             sel_ids = list(uidoc.Selection.GetElementIds())
             if not sel_ids:
                 forms.alert("No elements selected.\nPlease select elements in Revit first.", title="Notice")
                 return
-            self._apply_to_elements(sel_ids, open_properties_after=True)
+            self._apply_to_elements(sel_ids, open_properties_after=self._should_open_properties())
 
         def SelectAndAssign_Click(self, sender, args):
             cls_data = self._get_selected_class()
@@ -769,7 +945,8 @@ def main():
                 "dict_data": {
                     "name": dict_data.get("name", ""),
                     "uri": dict_data.get("uri", "")
-                }
+                },
+                "open_properties_after": self._should_open_properties(),
             }
             self.Close()
 
@@ -842,31 +1019,8 @@ def main():
                 return row_grid
 
             def _decode_display_text(raw_value):
-                try:
-                    txt = unicode(raw_value or "")
-                except Exception:
-                    try:
-                        txt = u"{}".format(raw_value or "")
-                    except Exception:
-                        txt = u""
-
-                if not txt:
-                    return u"(empty)"
-
-                # Values are stored ASCII-safe and may contain escape sequences
-                # like \xf6 or \u00f6; decode for human-readable UI.
-                try:
-                    if "\\x" in txt or "\\u" in txt or "\\U" in txt:
-                        try:
-                            decoded = txt.encode("utf-8").decode("unicode_escape")
-                        except Exception:
-                            decoded = str(txt).decode("unicode_escape")
-                        if decoded:
-                            txt = unicode(decoded)
-                except Exception:
-                    pass
-
-                return txt
+                txt = decode_escaped_text(raw_value)
+                return txt if txt else u"(empty)"
 
             legacy_schema = Schema.Lookup(System.Guid(_CLS_SCHEMA_GUID_STR))
             legacy_fields = None
@@ -989,26 +1143,7 @@ def main():
             from Autodesk.Revit.DB import Transaction as TX_local
 
             def _decode_for_edit(raw_value):
-                try:
-                    txt = unicode(raw_value or "")
-                except Exception:
-                    try:
-                        txt = u"{}".format(raw_value or "")
-                    except Exception:
-                        txt = u""
-
-                try:
-                    if "\\x" in txt or "\\u" in txt or "\\U" in txt:
-                        try:
-                            decoded = txt.encode("utf-8").decode("unicode_escape")
-                        except Exception:
-                            decoded = str(txt).decode("unicode_escape")
-                        if decoded:
-                            txt = unicode(decoded)
-                except Exception:
-                    pass
-
-                return txt
+                return decode_escaped_text(raw_value)
 
             selected = sender.SelectedItem
             if not selected or not hasattr(selected, 'Tag') or not selected.Tag:
@@ -1186,97 +1321,36 @@ def main():
                 return
 
             dialog_class_data = dict(class_data or {})
+            status, payload_detail, _ = _get_class_detail_cached(
+                class_uri,
+                dict_uri,
+                allow_network=True,
+                timeout_sec=8
+            )
 
-            # Always fetch full class properties: class-list payloads are often partial
-            # and can miss specific types such as Time.
-            try:
-                import urllib2 as _ul
-                import urllib as _ulbase
-                import json as _json
+            if status == "no-properties":
+                forms.alert(
+                    "The selected class has no properties.",
+                    title="Properties"
+                )
+                return
 
-                endpoints = [
-                    url.rstrip("/") + "/api/Class/v1/",
-                    url.rstrip("/") + "/api/Class/v1",
-                ]
+            if isinstance(payload_detail, dict):
+                merged_cached = dict(dialog_class_data or {})
+                merged_cached.update(payload_detail)
+                merged_cached["classProperties"] = list(payload_detail.get("classProperties", []) or [])
+                dialog_class_data = merged_cached
 
-                attempts = []
+            if "uri" not in dialog_class_data:
+                dialog_class_data["uri"] = class_uri
 
-                p1 = {"Uri": class_uri, "IncludeClassProperties": "true"}
-                if dict_uri:
-                    p1["DictionaryUri"] = dict_uri
-                attempts.append(p1)
-
-                p2 = {"uri": class_uri, "IncludeClassProperties": "true"}
-                if dict_uri:
-                    p2["dictionaryUri"] = dict_uri
-                attempts.append(p2)
-
-                attempts.append({"Uri": class_uri, "IncludeClassProperties": "true"})
-                attempts.append({"ClassUri": class_uri, "IncludeClassProperties": "true"})
-                attempts.append({"ClassUri": class_uri, "includeClassProperties": "true"})
-                attempts.append({"uri": class_uri, "includeClassProperties": "true"})
-
-                def _extract_candidate(payload_obj):
-                    if isinstance(payload_obj, dict):
-                        cps = payload_obj.get("classProperties", []) or []
-                        if isinstance(cps, list):
-                            return payload_obj
-
-                        classes = payload_obj.get("classes", []) or []
-                        if isinstance(classes, list):
-                            for c in classes:
-                                if isinstance(c, dict) and isinstance(c.get("classProperties", []), list):
-                                    return c
-
-                    if isinstance(payload_obj, list):
-                        for c in payload_obj:
-                            if isinstance(c, dict) and isinstance(c.get("classProperties", []), list):
-                                return c
-                    return None
-
-                best_payload = None
-                best_count = len(list((dialog_class_data or {}).get("classProperties", []) or []))
-
-                for endpoint in endpoints:
-                    for params in attempts:
-                        try:
-                            safe = {}
-                            for k, v in params.items():
-                                safe[safe_query_value(k)] = safe_query_value(v)
-
-                            full = endpoint + "?" + _ulbase.urlencode(safe)
-                            resp = _ul.urlopen(full.encode("utf-8") if isinstance(full, unicode) else full, timeout=30)
-                            raw = resp.read()
-
-                            payload = None
-                            try:
-                                payload = _json.loads(raw.decode("utf-8"))
-                            except Exception:
-                                try:
-                                    payload = _json.loads(raw)
-                                except Exception:
-                                    payload = None
-
-                            candidate = _extract_candidate(payload)
-                            if isinstance(candidate, dict):
-                                count = len(list(candidate.get("classProperties", []) or []))
-                                if best_payload is None or count > best_count:
-                                    best_payload = candidate
-                                    best_count = count
-                        except Exception:
-                            pass
-
-                if isinstance(best_payload, dict) and best_count > 0:
-                    merged = dict(dialog_class_data or {})
-                    merged.update(best_payload)
-                    # Keep richest list discovered.
-                    merged["classProperties"] = list(best_payload.get("classProperties", []) or [])
-                    dialog_class_data = merged
-                    if "uri" not in dialog_class_data:
-                        dialog_class_data["uri"] = class_uri
-            except Exception:
-                # Keep fallback class data if details endpoint fails.
-                pass
+            current_props = list((dialog_class_data or {}).get("classProperties", []) or [])
+            if "classProperties" in (dialog_class_data or {}) and not current_props:
+                forms.alert(
+                    "The selected class has no properties.",
+                    title="Properties"
+                )
+                return
 
             prop_dialog = ped.PropertyEditorDialog(doc, element_ids, dialog_class_data, dict_data or {})
             prop_dialog.ShowDialog()
@@ -1332,12 +1406,13 @@ def main():
             msg += " {} error(s).".format(errors)
         forms.alert(msg, title="Done")
 
-        run_post_classification_property_flow(
-            picked_ids,
-            req.get("class_data", {}),
-            req.get("dict_data", {}),
-            success
-        )
+        if req.get("open_properties_after", True):
+            run_post_classification_property_flow(
+                picked_ids,
+                req.get("class_data", {}),
+                req.get("dict_data", {}),
+                success
+            )
 
 
 main()

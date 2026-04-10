@@ -1,0 +1,97 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="IFC Export Settings"
+        Width="720" Height="360"
+        MinWidth="700" MinHeight="340"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="#F5F5F5">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Text="IFC export profile"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,6"/>
+
+        <ComboBox Grid.Row="1"
+                  x:Name="ProfileComboBox"
+                  Height="30"
+                  Margin="0,0,0,18"
+                  VerticalContentAlignment="Center"
+                  IsTextSearchEnabled="True"
+                  MaxDropDownHeight="320"
+                  ScrollViewer.CanContentScroll="False"
+                  VirtualizingStackPanel.IsVirtualizing="False"/>
+
+        <Grid Grid.Row="2" Margin="0,0,0,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0"
+                       Text="Classification mode"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center"/>
+
+            <Button Grid.Column="2"
+                    x:Name="InfoBtn"
+                    Width="24"
+                    Height="24"
+                    VerticalAlignment="Center"
+                    Padding="0"
+                    ToolTip="Open IFC classification reference documentation"
+                    Cursor="Hand"
+                    BorderBrush="#1E88E5"
+                    BorderThickness="1"
+                    Background="#EAF3FF"
+                    Foreground="#1E88E5"
+                    FontWeight="Bold"
+                    Content="i"/>
+        </Grid>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,0">
+            <RadioButton x:Name="FlatRadio"
+                         Content="Flat (lightweight)"
+                         Margin="0,0,28,0"
+                         VerticalAlignment="Center"/>
+            <RadioButton x:Name="HierarchicalRadio"
+                         Content="Hierarchical (full)"
+                         VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <Grid Grid.Row="5" Margin="0,16,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="1"
+                    x:Name="ContinueBtn"
+                    Content="Continue"
+                    Width="120"
+                    Height="34"
+                    IsDefault="True"
+                    Click="ContinueBtn_Click"/>
+
+            <Button Grid.Column="3"
+                    x:Name="CancelBtn"
+                    Content="Cancel"
+                    Width="120"
+                    Height="34"
+                    IsCancel="True"
+                    Click="CancelBtn_Click"/>
+        </Grid>
+    </Grid>
+</Window>

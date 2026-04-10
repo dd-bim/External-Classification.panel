@@ -13,11 +13,6 @@ class PropertyEditorDialog(forms.WPFWindow):
 
     def __init__(self, doc, element_ids, class_data, dict_data):
         import os
-        try:
-            import imp
-            imp.reload(pe)
-        except Exception:
-            pass
 
         self._ready = False
         xaml_path = os.path.join(os.path.dirname(__file__), "properties_dialog.xaml")
@@ -616,8 +611,7 @@ class PropertyEditorDialog(forms.WPFWindow):
                 raise
 
             if target_count > 0 and persisted_count == 0:
-                detail_getter = getattr(pe, "get_last_store_error", None)
-                detail = detail_getter() if callable(detail_getter) else "(module cache not refreshed)"
+                detail = pe.get_last_store_error()
                 forms.alert(
                     "No property data was persisted.\n"
                     "Class URI: {}\n"

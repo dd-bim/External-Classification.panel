@@ -90,28 +90,21 @@
         "documentation": {}
     },
     {
-        "label": "Window",
-        "importPath": "System.Windows",
-        "description": "System.Windows",
-        "isExtraImport": true,
-        "detail": "System.Windows",
-        "documentation": {}
-    },
-    {
-        "label": "Application",
-        "importPath": "System.Windows",
-        "description": "System.Windows",
-        "isExtraImport": true,
-        "detail": "System.Windows",
-        "documentation": {}
-    },
-    {
         "label": "json",
         "kind": 6,
         "isExtraImport": true,
         "importPath": "json",
         "description": "json",
         "detail": "json",
+        "documentation": {}
+    },
+    {
+        "label": "shared_text_utils",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "shared_text_utils",
+        "description": "shared_text_utils",
+        "detail": "shared_text_utils",
         "documentation": {}
     },
     {
@@ -139,6 +132,15 @@
         "importPath": "properties_editor_dialog",
         "description": "properties_editor_dialog",
         "detail": "properties_editor_dialog",
+        "documentation": {}
+    },
+    {
+        "label": "threading",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "threading",
+        "description": "threading",
+        "detail": "threading",
         "documentation": {}
     },
     {
@@ -245,7 +247,7 @@
         "kind": 2,
         "importPath": "02_AddClassification.pushbutton.properties_editor",
         "description": "02_AddClassification.pushbutton.properties_editor",
-        "peekOfCode": "def get_last_store_error():\n    \"\"\"Return last backend write error message for diagnostics.\"\"\"\n    return _LAST_STORE_ERROR\ndef _safe_unicode(value):\n    \"\"\"Convert value to unicode safely in IronPython/Python2 contexts.\"\"\"\n    def _from_bytes(raw):\n        try:\n            return raw.decode(\"utf-8\")\n        except Exception:\n            pass",
+        "peekOfCode": "def get_last_store_error():\n    \"\"\"Return last backend write error message for diagnostics.\"\"\"\n    return _LAST_STORE_ERROR\n_safe_unicode = text_utils.safe_unicode\ndef _normalize_for_json(obj):\n    \"\"\"Recursively normalize values to JSON-safe Python primitives.\"\"\"\n    if obj is None:\n        return None\n    if isinstance(obj, (bool, int, long, float)):\n        return obj",
         "detail": "02_AddClassification.pushbutton.properties_editor",
         "documentation": {}
     },
@@ -308,43 +310,7 @@
         "kind": 2,
         "importPath": "02_AddClassification.pushbutton.properties_editor",
         "description": "02_AddClassification.pushbutton.properties_editor",
-        "peekOfCode": "def serialize_properties_for_storage(property_sets):\n    \"\"\"Convert property tree to JSON-serializable format for storage.\"\"\"\n    return {\n        \"property_sets\": property_sets\n    }\ndef deserialize_properties_from_storage(stored_data):\n    \"\"\"Convert stored data back to property tree format.\"\"\"\n    return stored_data.get(\"property_sets\", [])\ndef get_property_summary(property_sets):\n    \"\"\"Generate a user-friendly summary of enabled properties and their values.\"\"\"",
-        "detail": "02_AddClassification.pushbutton.properties_editor",
-        "documentation": {}
-    },
-    {
-        "label": "deserialize_properties_from_storage",
-        "kind": 2,
-        "importPath": "02_AddClassification.pushbutton.properties_editor",
-        "description": "02_AddClassification.pushbutton.properties_editor",
-        "peekOfCode": "def deserialize_properties_from_storage(stored_data):\n    \"\"\"Convert stored data back to property tree format.\"\"\"\n    return stored_data.get(\"property_sets\", [])\ndef get_property_summary(property_sets):\n    \"\"\"Generate a user-friendly summary of enabled properties and their values.\"\"\"\n    summary = []\n    for pset in property_sets:\n        enabled_props = [p for p in pset.get(\"properties\", []) if p.get(\"enabled\")]\n        if enabled_props:\n            prop_names = [p[\"name\"] for p in enabled_props]",
-        "detail": "02_AddClassification.pushbutton.properties_editor",
-        "documentation": {}
-    },
-    {
-        "label": "get_property_summary",
-        "kind": 2,
-        "importPath": "02_AddClassification.pushbutton.properties_editor",
-        "description": "02_AddClassification.pushbutton.properties_editor",
-        "peekOfCode": "def get_property_summary(property_sets):\n    \"\"\"Generate a user-friendly summary of enabled properties and their values.\"\"\"\n    summary = []\n    for pset in property_sets:\n        enabled_props = [p for p in pset.get(\"properties\", []) if p.get(\"enabled\")]\n        if enabled_props:\n            prop_names = [p[\"name\"] for p in enabled_props]\n            summary.append(u\"{} ({} {})\".format(pset[\"name\"], len(enabled_props), \"property\" if len(enabled_props) == 1 else \"properties\"))\n    return u\"; \".join(summary) if summary else \"(no properties)\"\ndef collect_element_properties_for_export(elements):",
-        "detail": "02_AddClassification.pushbutton.properties_editor",
-        "documentation": {}
-    },
-    {
-        "label": "collect_element_properties_for_export",
-        "kind": 2,
-        "importPath": "02_AddClassification.pushbutton.properties_editor",
-        "description": "02_AddClassification.pushbutton.properties_editor",
-        "peekOfCode": "def collect_element_properties_for_export(elements):\n    \"\"\"\n    Collect property data from all elements for export.\n    Returns:\n        dict mapping element_id -> dict of (class_uri -> property_sets)\n    \"\"\"\n    result = {}\n    for elem in elements:\n        try:\n            all_props = load_all_class_properties(elem)",
-        "detail": "02_AddClassification.pushbutton.properties_editor",
-        "documentation": {}
-    },
-    {
-        "label": "convert_properties_to_ifc_propertyset_dict",
-        "kind": 2,
-        "importPath": "02_AddClassification.pushbutton.properties_editor",
-        "description": "02_AddClassification.pushbutton.properties_editor",
-        "peekOfCode": "def convert_properties_to_ifc_propertyset_dict(class_uri, property_data):\n    \"\"\"\n    Convert stored property data to IFC PropertySet structure.\n    This will be used by the IFC exporter to create IfcPropertySet and IfcPropertySingleValue entities.\n    Returns:\n        dict with IFC-compatible structure\n    \"\"\"\n    property_sets = property_data.get(\"property_sets\", [])\n    ifc_data = {}\n    for pset in property_sets:",
+        "peekOfCode": "def serialize_properties_for_storage(property_sets):\n    \"\"\"Convert property tree to JSON-serializable format for storage.\"\"\"\n    return {\n        \"property_sets\": property_sets\n    }\ndef update_property_value(elem, class_uri, pset_name, property_name, new_value):\n    \"\"\"\n    Update a single property value in storage.\n    Args:\n        elem: Revit Element",
         "detail": "02_AddClassification.pushbutton.properties_editor",
         "documentation": {}
     },
@@ -362,7 +328,7 @@
         "kind": 5,
         "importPath": "02_AddClassification.pushbutton.properties_editor",
         "description": "02_AddClassification.pushbutton.properties_editor",
-        "peekOfCode": "_PROP_SCHEMA_GUID = \"FEDCBA98-7654-3210-FEDC-BA9876543211\"\n_PROP_SCHEMA_NAME = \"ExternalClassificationProperties\"\n_LAST_STORE_ERROR = \"\"\ndef get_last_store_error():\n    \"\"\"Return last backend write error message for diagnostics.\"\"\"\n    return _LAST_STORE_ERROR\ndef _safe_unicode(value):\n    \"\"\"Convert value to unicode safely in IronPython/Python2 contexts.\"\"\"\n    def _from_bytes(raw):\n        try:",
+        "peekOfCode": "_PROP_SCHEMA_GUID = \"FEDCBA98-7654-3210-FEDC-BA9876543211\"\n_PROP_SCHEMA_NAME = \"ExternalClassificationProperties\"\n_LAST_STORE_ERROR = \"\"\ndef get_last_store_error():\n    \"\"\"Return last backend write error message for diagnostics.\"\"\"\n    return _LAST_STORE_ERROR\n_safe_unicode = text_utils.safe_unicode\ndef _normalize_for_json(obj):\n    \"\"\"Recursively normalize values to JSON-safe Python primitives.\"\"\"\n    if obj is None:",
         "detail": "02_AddClassification.pushbutton.properties_editor",
         "documentation": {}
     },
@@ -371,7 +337,7 @@
         "kind": 5,
         "importPath": "02_AddClassification.pushbutton.properties_editor",
         "description": "02_AddClassification.pushbutton.properties_editor",
-        "peekOfCode": "_PROP_SCHEMA_NAME = \"ExternalClassificationProperties\"\n_LAST_STORE_ERROR = \"\"\ndef get_last_store_error():\n    \"\"\"Return last backend write error message for diagnostics.\"\"\"\n    return _LAST_STORE_ERROR\ndef _safe_unicode(value):\n    \"\"\"Convert value to unicode safely in IronPython/Python2 contexts.\"\"\"\n    def _from_bytes(raw):\n        try:\n            return raw.decode(\"utf-8\")",
+        "peekOfCode": "_PROP_SCHEMA_NAME = \"ExternalClassificationProperties\"\n_LAST_STORE_ERROR = \"\"\ndef get_last_store_error():\n    \"\"\"Return last backend write error message for diagnostics.\"\"\"\n    return _LAST_STORE_ERROR\n_safe_unicode = text_utils.safe_unicode\ndef _normalize_for_json(obj):\n    \"\"\"Recursively normalize values to JSON-safe Python primitives.\"\"\"\n    if obj is None:\n        return None",
         "detail": "02_AddClassification.pushbutton.properties_editor",
         "documentation": {}
     },
@@ -380,7 +346,16 @@
         "kind": 5,
         "importPath": "02_AddClassification.pushbutton.properties_editor",
         "description": "02_AddClassification.pushbutton.properties_editor",
-        "peekOfCode": "_LAST_STORE_ERROR = \"\"\ndef get_last_store_error():\n    \"\"\"Return last backend write error message for diagnostics.\"\"\"\n    return _LAST_STORE_ERROR\ndef _safe_unicode(value):\n    \"\"\"Convert value to unicode safely in IronPython/Python2 contexts.\"\"\"\n    def _from_bytes(raw):\n        try:\n            return raw.decode(\"utf-8\")\n        except Exception:",
+        "peekOfCode": "_LAST_STORE_ERROR = \"\"\ndef get_last_store_error():\n    \"\"\"Return last backend write error message for diagnostics.\"\"\"\n    return _LAST_STORE_ERROR\n_safe_unicode = text_utils.safe_unicode\ndef _normalize_for_json(obj):\n    \"\"\"Recursively normalize values to JSON-safe Python primitives.\"\"\"\n    if obj is None:\n        return None\n    if isinstance(obj, (bool, int, long, float)):",
+        "detail": "02_AddClassification.pushbutton.properties_editor",
+        "documentation": {}
+    },
+    {
+        "label": "_safe_unicode",
+        "kind": 5,
+        "importPath": "02_AddClassification.pushbutton.properties_editor",
+        "description": "02_AddClassification.pushbutton.properties_editor",
+        "peekOfCode": "_safe_unicode = text_utils.safe_unicode\ndef _normalize_for_json(obj):\n    \"\"\"Recursively normalize values to JSON-safe Python primitives.\"\"\"\n    if obj is None:\n        return None\n    if isinstance(obj, (bool, int, long, float)):\n        return obj\n    if isinstance(obj, (unicode, str)):\n        return _safe_unicode(obj)\n    if isinstance(obj, list):",
         "detail": "02_AddClassification.pushbutton.properties_editor",
         "documentation": {}
     },
@@ -389,7 +364,7 @@
         "kind": 6,
         "importPath": "02_AddClassification.pushbutton.properties_editor_dialog",
         "description": "02_AddClassification.pushbutton.properties_editor_dialog",
-        "peekOfCode": "class PropertyEditorDialog(forms.WPFWindow):\n    \"\"\"Dialog to configure properties for classified elements.\"\"\"\n    def __init__(self, doc, element_ids, class_data, dict_data):\n        import os\n        try:\n            import imp\n            imp.reload(pe)\n        except Exception:\n            pass\n        self._ready = False",
+        "peekOfCode": "class PropertyEditorDialog(forms.WPFWindow):\n    \"\"\"Dialog to configure properties for classified elements.\"\"\"\n    def __init__(self, doc, element_ids, class_data, dict_data):\n        import os\n        self._ready = False\n        xaml_path = os.path.join(os.path.dirname(__file__), \"properties_dialog.xaml\")\n        forms.WPFWindow.__init__(self, xaml_path)\n        self.doc = doc\n        self.element_ids = list(element_ids or [])\n        self.class_data = class_data or {}",
         "detail": "02_AddClassification.pushbutton.properties_editor_dialog",
         "documentation": {}
     },
@@ -407,7 +382,7 @@
         "kind": 5,
         "importPath": "02_AddClassification.pushbutton.script",
         "description": "02_AddClassification.pushbutton.script",
-        "peekOfCode": "__title__ = \"Add\\nClassification\"\n__doc__ = \"Add external classification to selected elements\"\nfrom pyrevit import forms\nimport properties_editor as pe\nimport properties_editor_dialog as ped\ndef main():\n    import clr\n    clr.AddReference('System')\n    import System\n    import os",
+        "peekOfCode": "__title__ = \"Add\\nClassification\"\n__doc__ = \"Add external classification to selected elements\"\nfrom pyrevit import forms\nimport properties_editor as pe\nimport properties_editor_dialog as ped\nimport threading\nimport shared_text_utils as text_utils\ndef main():\n    import clr\n    clr.AddReference('System')",
         "detail": "02_AddClassification.pushbutton.script",
         "documentation": {}
     },
@@ -416,8 +391,62 @@
         "kind": 5,
         "importPath": "02_AddClassification.pushbutton.script",
         "description": "02_AddClassification.pushbutton.script",
-        "peekOfCode": "__doc__ = \"Add external classification to selected elements\"\nfrom pyrevit import forms\nimport properties_editor as pe\nimport properties_editor_dialog as ped\ndef main():\n    import clr\n    clr.AddReference('System')\n    import System\n    import os\n    import json as _json",
+        "peekOfCode": "__doc__ = \"Add external classification to selected elements\"\nfrom pyrevit import forms\nimport properties_editor as pe\nimport properties_editor_dialog as ped\nimport threading\nimport shared_text_utils as text_utils\ndef main():\n    import clr\n    clr.AddReference('System')\n    import System",
         "detail": "02_AddClassification.pushbutton.script",
+        "documentation": {}
+    },
+    {
+        "label": "safe_unicode",
+        "kind": 2,
+        "importPath": "02_AddClassification.pushbutton.shared_text_utils",
+        "description": "02_AddClassification.pushbutton.shared_text_utils",
+        "peekOfCode": "def safe_unicode(value):\n    try:\n        if value is None:\n            return u\"\"\n        try:\n            if isinstance(value, text_type):\n                return value\n        except Exception:\n            pass\n        if hasattr(value, \"ToString\"):",
+        "detail": "02_AddClassification.pushbutton.shared_text_utils",
+        "documentation": {}
+    },
+    {
+        "label": "safe_query_value",
+        "kind": 2,
+        "importPath": "02_AddClassification.pushbutton.shared_text_utils",
+        "description": "02_AddClassification.pushbutton.shared_text_utils",
+        "peekOfCode": "def safe_query_value(value):\n    txt = safe_unicode(value)\n    try:\n        return txt.encode(\"utf-8\")\n    except Exception:\n        return txt\ndef decode_escaped_text(value):\n    txt = safe_unicode(value)\n    if not txt:\n        return txt",
+        "detail": "02_AddClassification.pushbutton.shared_text_utils",
+        "documentation": {}
+    },
+    {
+        "label": "decode_escaped_text",
+        "kind": 2,
+        "importPath": "02_AddClassification.pushbutton.shared_text_utils",
+        "description": "02_AddClassification.pushbutton.shared_text_utils",
+        "peekOfCode": "def decode_escaped_text(value):\n    txt = safe_unicode(value)\n    if not txt:\n        return txt\n    try:\n        if \"\\\\x\" in txt or \"\\\\u\" in txt or \"\\\\U\" in txt:\n            try:\n                decoded = txt.encode(\"utf-8\").decode(\"unicode_escape\")\n            except Exception:\n                decoded = str(txt).decode(\"unicode_escape\")",
+        "detail": "02_AddClassification.pushbutton.shared_text_utils",
+        "documentation": {}
+    },
+    {
+        "label": "ifc_escape_text",
+        "kind": 2,
+        "importPath": "02_AddClassification.pushbutton.shared_text_utils",
+        "description": "02_AddClassification.pushbutton.shared_text_utils",
+        "peekOfCode": "def ifc_escape_text(value):\n    txt = decode_escaped_text(value)\n    out = []\n    for ch in txt:\n        try:\n            code = ord(ch)\n        except Exception:\n            code = 0\n        if ch == \"'\":\n            out.append(\"''\")",
+        "detail": "02_AddClassification.pushbutton.shared_text_utils",
+        "documentation": {}
+    },
+    {
+        "label": "ifc_literal_ascii",
+        "kind": 2,
+        "importPath": "02_AddClassification.pushbutton.shared_text_utils",
+        "description": "02_AddClassification.pushbutton.shared_text_utils",
+        "peekOfCode": "def ifc_literal_ascii(value):\n    txt = ifc_escape_text(value).strip()\n    if not txt:\n        return \"$\"\n    return \"'{}'\".format(txt)",
+        "detail": "02_AddClassification.pushbutton.shared_text_utils",
+        "documentation": {}
+    },
+    {
+        "label": "text_type",
+        "kind": 5,
+        "importPath": "02_AddClassification.pushbutton.shared_text_utils",
+        "description": "02_AddClassification.pushbutton.shared_text_utils",
+        "peekOfCode": "text_type = type(u\"\")\ndef safe_unicode(value):\n    try:\n        if value is None:\n            return u\"\"\n        try:\n            if isinstance(value, text_type):\n                return value\n        except Exception:\n            pass",
+        "detail": "02_AddClassification.pushbutton.shared_text_utils",
         "documentation": {}
     },
     {
@@ -425,7 +454,7 @@
         "kind": 2,
         "importPath": "03_ExportIFC.pushbutton.script",
         "description": "03_ExportIFC.pushbutton.script",
-        "peekOfCode": "def main():\n    import re\n    import uuid\n    import datetime\n    import json\n    import clr\n    clr.AddReference(\"System\")\n    clr.AddReference(\"System.Windows.Forms\")\n    import System\n    from System.Windows.Forms import SaveFileDialog, DialogResult",
+        "peekOfCode": "def main():\n    import re\n    import uuid\n    import datetime\n    import json\n    import sys\n    import clr\n    clr.AddReference(\"System\")\n    clr.AddReference(\"System.Windows.Forms\")\n    import System",
         "detail": "03_ExportIFC.pushbutton.script",
         "documentation": {}
     },
@@ -434,7 +463,7 @@
         "kind": 5,
         "importPath": "03_ExportIFC.pushbutton.script",
         "description": "03_ExportIFC.pushbutton.script",
-        "peekOfCode": "__title__ = \"Export\\nIFC\"\n__doc__ = \"Exports IFC with external classification.\"\nimport os\nfrom pyrevit import forms\ndef main():\n    import re\n    import uuid\n    import datetime\n    import json\n    import clr",
+        "peekOfCode": "__title__ = \"Export\\nIFC\"\n__doc__ = \"Exports IFC with external classification.\"\nimport os\nfrom pyrevit import forms\ndef main():\n    import re\n    import uuid\n    import datetime\n    import json\n    import sys",
         "detail": "03_ExportIFC.pushbutton.script",
         "documentation": {}
     },
@@ -443,7 +472,7 @@
         "kind": 5,
         "importPath": "03_ExportIFC.pushbutton.script",
         "description": "03_ExportIFC.pushbutton.script",
-        "peekOfCode": "__doc__ = \"Exports IFC with external classification.\"\nimport os\nfrom pyrevit import forms\ndef main():\n    import re\n    import uuid\n    import datetime\n    import json\n    import clr\n    clr.AddReference(\"System\")",
+        "peekOfCode": "__doc__ = \"Exports IFC with external classification.\"\nimport os\nfrom pyrevit import forms\ndef main():\n    import re\n    import uuid\n    import datetime\n    import json\n    import sys\n    import clr",
         "detail": "03_ExportIFC.pushbutton.script",
         "documentation": {}
     }

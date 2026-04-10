@@ -5,6 +5,7 @@ Handles storage, editing, and export of class properties and property sets.
 """
 
 import json as _json
+import shared_text_utils as text_utils
 
 
 _PROP_SCHEMA_GUID = "FEDCBA98-7654-3210-FEDC-BA9876543211"
@@ -17,77 +18,7 @@ def get_last_store_error():
     return _LAST_STORE_ERROR
 
 
-def _safe_unicode(value):
-    """Convert value to unicode safely in IronPython/Python2 contexts."""
-    def _from_bytes(raw):
-        try:
-            return raw.decode("utf-8")
-        except Exception:
-            pass
-        try:
-            return raw.decode("cp1252")
-        except Exception:
-            pass
-        try:
-            return raw.decode("latin-1")
-        except Exception:
-            pass
-        try:
-            return u"".join(unichr(ord(ch)) for ch in raw)
-        except Exception:
-            return u""
-
-    try:
-        if value is None:
-            return u""
-
-        # Fast path for managed strings in IronPython.
-        try:
-            import System
-            if isinstance(value, System.String):
-                try:
-                    txt = value.ToString()
-                except Exception:
-                    txt = value
-                if isinstance(txt, unicode):
-                    return txt
-                if isinstance(txt, str):
-                    return _from_bytes(txt)
-        except Exception:
-            pass
-
-        if isinstance(value, unicode):
-            return value
-
-        if isinstance(value, str):
-            return _from_bytes(value)
-
-        try:
-            if hasattr(value, "ToString"):
-                text = value.ToString()
-                if isinstance(text, unicode):
-                    return text
-                if isinstance(text, str):
-                    return _from_bytes(text)
-        except Exception:
-            pass
-
-        try:
-            return u"{}".format(value)
-        except Exception:
-            pass
-
-        try:
-            return unicode(value)
-        except Exception:
-            pass
-
-        return u""
-    except Exception:
-        try:
-            return u"{}".format(repr(value))
-        except Exception:
-            return u""
+_safe_unicode = text_utils.safe_unicode
 
 
 def _normalize_for_json(obj):
@@ -236,7 +167,6 @@ def _get_properties_field(schema):
     except Exception:
         pass
 
-    # Fallback: first available field in schema (for older field names).
     try:
         for field in schema.ListFields():
             if field:
@@ -356,7 +286,6 @@ def store_class_properties(elem, class_uri, property_data):
         _LAST_STORE_ERROR = "No writable field found in property schema."
         return False
     except Exception as ex:
-        # Silently ignore errors - properties storage is not critical
         try:
             _LAST_STORE_ERROR = u"Stage {} | {}".format(stage, _safe_unicode(repr(ex)))[:220]
         except Exception:
@@ -471,7 +400,6 @@ def delete_class_properties(elem, class_uri):
             except Exception:
                 pass
     except Exception:
-        # Silently ignore errors - properties deletion is not critical
         pass
 
 
@@ -547,75 +475,6 @@ def serialize_properties_for_storage(property_sets):
     return {
         "property_sets": property_sets
     }
-
-
-def deserialize_properties_from_storage(stored_data):
-    """Convert stored data back to property tree format."""
-    return stored_data.get("property_sets", [])
-
-
-def get_property_summary(property_sets):
-    """Generate a user-friendly summary of enabled properties and their values."""
-    summary = []
-    for pset in property_sets:
-        enabled_props = [p for p in pset.get("properties", []) if p.get("enabled")]
-        if enabled_props:
-            prop_names = [p["name"] for p in enabled_props]
-            summary.append(u"{} ({} {})".format(pset["name"], len(enabled_props), "property" if len(enabled_props) == 1 else "properties"))
-    
-    return u"; ".join(summary) if summary else "(no properties)"
-
-
-def collect_element_properties_for_export(elements):
-    """
-    Collect property data from all elements for export.
-    
-    Returns:
-        dict mapping element_id -> dict of (class_uri -> property_sets)
-    """
-    result = {}
-    for elem in elements:
-        try:
-            all_props = load_all_class_properties(elem)
-            if all_props:
-                elem_id = elem.Id.IntegerValue
-                result[elem_id] = all_props
-        except Exception:
-            pass
-    
-    return result
-
-
-def convert_properties_to_ifc_propertyset_dict(class_uri, property_data):
-    """
-    Convert stored property data to IFC PropertySet structure.
-    
-    This will be used by the IFC exporter to create IfcPropertySet and IfcPropertySingleValue entities.
-    
-    Returns:
-        dict with IFC-compatible structure
-    """
-    property_sets = property_data.get("property_sets", [])
-    ifc_data = {}
-    
-    for pset in property_sets:
-        pset_name = pset.get("name", "DefaultPropertySet")
-        properties = []
-        
-        for prop in pset.get("properties", []):
-            if prop.get("enabled"):
-                prop_dict = {
-                    "name": prop.get("name", ""),
-                    "value": prop.get("value", ""),
-                    "dataType": prop.get("dataType", "String"),
-                    "uri": prop.get("uri", "")
-                }
-                properties.append(prop_dict)
-        
-        if properties:
-            ifc_data[pset_name] = properties
-    
-    return ifc_data
 
 
 def update_property_value(elem, class_uri, pset_name, property_name, new_value):
