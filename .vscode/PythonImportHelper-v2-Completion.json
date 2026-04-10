@@ -153,6 +153,15 @@
         "documentation": {}
     },
     {
+        "label": "sys",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "sys",
+        "description": "sys",
+        "detail": "sys",
+        "documentation": {}
+    },
+    {
         "label": "get_or_create_schema",
         "kind": 2,
         "importPath": "01_SetURL.pushbutton.script",
@@ -373,7 +382,7 @@
         "kind": 2,
         "importPath": "02_AddClassification.pushbutton.script",
         "description": "02_AddClassification.pushbutton.script",
-        "peekOfCode": "def main():\n    import clr\n    clr.AddReference('System')\n    import System\n    import os\n    import json as _json\n    from Autodesk.Revit.DB import Transaction, FilteredElementCollector, CategoryType, ElementId, BuiltInCategory\n    from Autodesk.Revit.UI.Selection import ObjectType\n    from Autodesk.Revit.Exceptions import OperationCanceledException\n    from Autodesk.Revit.DB.ExtensibleStorage import (",
+        "peekOfCode": "def main():\n    import clr\n    clr.AddReference('System')\n    import System\n    import os\n    import sys\n    import json as _json\n    # Version compatibility check\n    try:\n        parent_dir = os.path.dirname(os.path.dirname(__file__))",
         "detail": "02_AddClassification.pushbutton.script",
         "documentation": {}
     },
@@ -454,7 +463,7 @@
         "kind": 2,
         "importPath": "03_ExportIFC.pushbutton.script",
         "description": "03_ExportIFC.pushbutton.script",
-        "peekOfCode": "def main():\n    import re\n    import uuid\n    import datetime\n    import json\n    import sys\n    import clr\n    clr.AddReference(\"System\")\n    clr.AddReference(\"System.Windows.Forms\")\n    import System",
+        "peekOfCode": "def main():\n    import re\n    import sys\n    import os as _os_check\n    # Early compatibility check\n    try:\n        script_dir = _os_check.path.dirname(__file__)\n        parent_dir = _os_check.path.dirname(script_dir)\n        if parent_dir not in sys.path:\n            sys.path.insert(0, parent_dir)",
         "detail": "03_ExportIFC.pushbutton.script",
         "documentation": {}
     },
@@ -463,7 +472,7 @@
         "kind": 5,
         "importPath": "03_ExportIFC.pushbutton.script",
         "description": "03_ExportIFC.pushbutton.script",
-        "peekOfCode": "__title__ = \"Export\\nIFC\"\n__doc__ = \"Exports IFC with external classification.\"\nimport os\nfrom pyrevit import forms\ndef main():\n    import re\n    import uuid\n    import datetime\n    import json\n    import sys",
+        "peekOfCode": "__title__ = \"Export\\nIFC\"\n__doc__ = \"Exports IFC with external classification.\"\nimport os\nfrom pyrevit import forms\ndef main():\n    import re\n    import sys\n    import os as _os_check\n    # Early compatibility check\n    try:",
         "detail": "03_ExportIFC.pushbutton.script",
         "documentation": {}
     },
@@ -472,8 +481,53 @@
         "kind": 5,
         "importPath": "03_ExportIFC.pushbutton.script",
         "description": "03_ExportIFC.pushbutton.script",
-        "peekOfCode": "__doc__ = \"Exports IFC with external classification.\"\nimport os\nfrom pyrevit import forms\ndef main():\n    import re\n    import uuid\n    import datetime\n    import json\n    import sys\n    import clr",
+        "peekOfCode": "__doc__ = \"Exports IFC with external classification.\"\nimport os\nfrom pyrevit import forms\ndef main():\n    import re\n    import sys\n    import os as _os_check\n    # Early compatibility check\n    try:\n        script_dir = _os_check.path.dirname(__file__)",
         "detail": "03_ExportIFC.pushbutton.script",
+        "documentation": {}
+    },
+    {
+        "label": "get_revit_app_version",
+        "kind": 2,
+        "importPath": "revit_compat",
+        "description": "revit_compat",
+        "peekOfCode": "def get_revit_app_version():\n    \"\"\"\n    Return the major Revit version number.\n    Returns:\n        int: For example 2025, 2024, 2023, or 2022.\n    \"\"\"\n    try:\n        from Autodesk.Revit.ApplicationServices import Application\n        app_version = __revit__.Application.VersionNumber\n        # Format: \"2025.0.12345\" -> extract \"2025\"",
+        "detail": "revit_compat",
+        "documentation": {}
+    },
+    {
+        "label": "get_ifc_shared_parameters_path",
+        "kind": 2,
+        "importPath": "revit_compat",
+        "description": "revit_compat",
+        "peekOfCode": "def get_ifc_shared_parameters_path(revit_app_version=None):\n    \"\"\"\n    Find the IFC shared parameters file path.\n    Args:\n        revit_app_version: Optional major version, for example 2025.\n    Returns:\n        str: The shared parameters path, or None if no file is found.\n    \"\"\"\n    if revit_app_version is None:\n        revit_app_version = get_revit_app_version()",
+        "detail": "revit_compat",
+        "documentation": {}
+    },
+    {
+        "label": "check_revit_version_compatible",
+        "kind": 2,
+        "importPath": "revit_compat",
+        "description": "revit_compat",
+        "peekOfCode": "def check_revit_version_compatible(min_version=2022, max_version=2025):\n    \"\"\"\n    Check whether the current Revit version is supported.\n    Args:\n        min_version: Minimum supported version.\n        max_version: Optional maximum supported version.\n    Returns:\n        tuple: (is_compatible: bool, version_info: str)\n    \"\"\"\n    current_version = get_revit_app_version()",
+        "detail": "revit_compat",
+        "documentation": {}
+    },
+    {
+        "label": "ensure_revit_version",
+        "kind": 2,
+        "importPath": "revit_compat",
+        "description": "revit_compat",
+        "peekOfCode": "def ensure_revit_version(min_version=2022):\n    \"\"\"\n    Validate the Revit version and show a warning if needed.\n    Args:\n        min_version: Minimum supported version.\n    Returns:\n        bool: True if the version is compatible.\n    \"\"\"\n    from pyrevit import forms\n    compatible, info = check_revit_version_compatible(min_version=min_version)",
+        "detail": "revit_compat",
+        "documentation": {}
+    },
+    {
+        "label": "get_revit_install_path",
+        "kind": 2,
+        "importPath": "revit_compat",
+        "description": "revit_compat",
+        "peekOfCode": "def get_revit_install_path():\n    \"\"\"\n    Return the Revit installation directory.\n    Returns:\n        str: Path to C:\\Program Files\\Autodesk\\Revit YYYY or None.\n    \"\"\"\n    try:\n        version = get_revit_app_version()\n        if version is None:\n            return None",
+        "detail": "revit_compat",
         "documentation": {}
     }
 ]

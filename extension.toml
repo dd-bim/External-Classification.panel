@@ -1,0 +1,22 @@
+[about]
+name = "External Classification"
+version = "1.0.0"
+description = "IFC export with external classification from bSDD (buildingSMART Data Dictionary)"
+summary = "Add bSDD classifications to Revit elements and export to IFC"
+author = "Sebastian Schilling"
+authorprofile = "https://github.com/Schi11er"
+website = "https://github.com/Schi11er/External-Classification.panel"
+contact = ""
+
+[requirements]
+revit = "2024+"
+"pyrevit" = "4.8+"
+
+[urls]
+repository = "https://github.com/Schi11er/External-Classification.panel"
+documentation = "https://github.com/Schi11er/External-Classification.panel/wiki"
+issues = "https://github.com/Schi11er/External-Classification.panel/issues"
+changelog = "https://github.com/Schi11er/External-Classification.panel/releases"
+
+[build]
+os = "win64"

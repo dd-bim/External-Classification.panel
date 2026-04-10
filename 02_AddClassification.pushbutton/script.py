@@ -14,7 +14,21 @@ def main():
     clr.AddReference('System')
     import System
     import os
+    import sys
     import json as _json
+    
+    # Version compatibility check
+    try:
+        parent_dir = os.path.dirname(os.path.dirname(__file__))
+        if parent_dir not in sys.path:
+            sys.path.insert(0, parent_dir)
+        import revit_compat as _compat_check
+        if not _compat_check.ensure_revit_version(min_version=2022):
+            return  # User cancelled or incompatible version
+    except Exception:
+        # If compat check fails, continue anyway (backward compatibility)
+        pass
+    
     from Autodesk.Revit.DB import Transaction, FilteredElementCollector, CategoryType, ElementId, BuiltInCategory
     from Autodesk.Revit.UI.Selection import ObjectType
     from Autodesk.Revit.Exceptions import OperationCanceledException

@@ -1,0 +1,35 @@
+# Don't track these files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Revit specific
+*.addin
+*.dck
+*.ost
+*.rvt
+*.rfa
+
+# Build / Output
+dist/
+build/
+*.egg-info/
+
+# pyRevit cache
+40a700c9aa*
+*.manifest
+
+.drawio

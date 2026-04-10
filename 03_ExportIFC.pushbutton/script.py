@@ -8,6 +8,21 @@ from pyrevit import forms
 
 def main():
     import re
+    import sys
+    import os as _os_check
+    
+    # Early compatibility check
+    try:
+        script_dir = _os_check.path.dirname(__file__)
+        parent_dir = _os_check.path.dirname(script_dir)
+        if parent_dir not in sys.path:
+            sys.path.insert(0, parent_dir)
+        import revit_compat as _compat_early
+        if not _compat_early.ensure_revit_version(min_version=2022):
+            return  # User cancelled or incompatible version
+    except Exception as early_ex:
+        forms.alert("Compatibility check failed: {}".format(str(early_ex)), title="Error")
+        return
     import uuid
     import datetime
     import json
@@ -30,7 +45,14 @@ def main():
     add_cls_dir = os.path.join(parent_dir, "02_AddClassification.pushbutton")
     if add_cls_dir not in sys.path:
         sys.path.insert(0, add_cls_dir)
+    
+    # Add panel root to sys.path for revit_compat module
+    panel_root = parent_dir
+    if panel_root not in sys.path:
+        sys.path.insert(0, panel_root)
+    
     import shared_text_utils as text_utils
+    import revit_compat as compat
 
     try:
         text_type = unicode
@@ -48,7 +70,8 @@ def main():
     cls_schema_guid = "ABCDEF12-3456-7890-ABCD-EF1234567890"
     cls_multi_schema_guid = "ABCDEF12-3456-7890-ABCD-EF1234567891"
     ifc_cls_schema_guid = "9A5A28C2-DDAC-4828-8B8A-3EE97118017A"
-    ifc_builtin_sp = r"C:\Program Files\Autodesk\Revit 2025\IFC Shared Parameters-RevitIFCBuiltIn_ALL.txt"
+    # Dynamischer Pfad für kompatible Revit-Versionen (2022-2025+)
+    ifc_builtin_sp = compat.get_ifc_shared_parameters_path() or r"C:\Program Files\Autodesk\Revit 2025\IFC Shared Parameters-RevitIFCBuiltIn_ALL.txt"
 
     def get_ext_def(shared_param_file, group_name, pname, create_if_missing):
         app = doc.Application
