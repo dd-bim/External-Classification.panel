@@ -2,17 +2,14 @@
 """
 Revit version compatibility helpers.
 """
-
 import os
-import sys
-
 
 def get_revit_app_version():
     """
     Return the major Revit version number.
 
     Returns:
-        int: For example 2025, 2024, 2023, or 2022.
+        int: For example 2025, 2024.
     """
     try:
         from Autodesk.Revit.ApplicationServices import Application
@@ -52,10 +49,10 @@ def get_ifc_shared_parameters_path(revit_app_version=None):
         os.path.expanduser(r"~\AppData\Roaming\Autodesk\Revit\Shared Parameters\IFC Shared Parameters.txt"),
     ]
     
-    # Try a few older versions as a fallback.
+    # Try a few older versions as a fallback (down to project minimum 2024).
     for offset in range(1, 4):
         fallback_version = revit_app_version - offset
-        if fallback_version >= 2022:
+        if fallback_version >= 2024:
             candidates.append(
                 r"C:\Program Files\Autodesk\Revit {}\IFC Shared Parameters-RevitIFCBuiltIn_ALL.txt".format(fallback_version)
             )
@@ -67,13 +64,12 @@ def get_ifc_shared_parameters_path(revit_app_version=None):
     return None
 
 
-def check_revit_version_compatible(min_version=2022, max_version=2025):
+def check_revit_version_compatible(min_version=2024):
     """
     Check whether the current Revit version is supported.
 
     Args:
         min_version: Minimum supported version.
-        max_version: Optional maximum supported version.
     
     Returns:
         tuple: (is_compatible: bool, version_info: str)
@@ -86,13 +82,10 @@ def check_revit_version_compatible(min_version=2022, max_version=2025):
     if current_version < min_version:
         return False, "Revit {} is too old (minimum: {})".format(current_version, min_version)
     
-    if max_version and current_version > max_version:
-        return False, "Revit {} is too new (maximum: {})".format(current_version, max_version)
-    
     return True, "Revit {} is supported".format(current_version)
 
 
-def ensure_revit_version(min_version=2022):
+def ensure_revit_version(min_version=2024):
     """
     Validate the Revit version and show a warning if needed.
 

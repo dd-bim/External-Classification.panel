@@ -23,7 +23,7 @@ def main():
         if parent_dir not in sys.path:
             sys.path.insert(0, parent_dir)
         import revit_compat as _compat_check
-        if not _compat_check.ensure_revit_version(min_version=2022):
+        if not _compat_check.ensure_revit_version():
             return  # User cancelled or incompatible version
     except Exception:
         # If compat check fails, continue anyway (backward compatibility)

@@ -10,8 +10,9 @@ External Classification is a pyRevit extension for Revit 2024 and newer. It lets
 
 ## Notes
 
+- The extension is tested in Revit 2024 and 2025.
 - Up to five different dictionaries can be used in one project.
-- The export workflow is intended for IFC 4-based exports.
+- The export workflow is intended for IFC-based exports of version 4 or higher. However, it also works with version 2x3, though not all dictionary information can be exported to IFC.
 
 ## Installation
 
@@ -21,7 +22,7 @@ If pyRevit is not already installed, install it first.
 
 Recommended options:
 
-1. Download the latest pyRevit installer from the official pyRevit release page.
+1. Download the latest [pyRevit](https://pyrevitlabs.notion.site/Install-pyRevit-98ca4359920a42c3af5c12a7c99a196d) installer from the official [pyRevit release page](https://github.com/pyrevitlabs/pyRevit/releases).
 2. Run the installer and follow the setup instructions.
 3. Start Revit and confirm that a pyRevit tab appears in the ribbon.
 
@@ -30,13 +31,13 @@ If you already have pyRevit installed, you can skip this step.
 ### Recommended: install from GitHub
 
 1. Download or clone this repository from GitHub.
-2. Copy the `External Classification.panel` folder into your pyRevit extensions folder.
+2. Rename the unziped folder to `External Classification.panel` and copy it into your pyRevit extensions folder.
 3. Restart Revit.
 
-Typical pyRevit extensions folder locations are:
+Typical pyRevit extensions folder locations in Windows are:
 
-- `%APPDATA%\pyRevit\Extensions`
-- `%APPDATA%\pyRevit\Custom Extensions`
+- `C:\Users\[username]\%APPDATA%\Roaming\pyRevit\Extensions`
+- `C:\Users\[username]\%APPDATA%\Roaming\pyRevit\Custom Extensions`
 
 If you already use pyRevit, place the panel in the same extensions location where your other custom tools are stored.
 
@@ -57,10 +58,12 @@ After installation, the extension appears in the pyRevit ribbon.
 ### Start in 5 steps
 
 1. Open Revit.
-2. Open the pyRevit tab.
+2. Open the pyRevit Bundles Creator tab.
 3. Open `Set URL` if you want to use a custom bSDD endpoint.
 4. Use `Add Classification` to assign classes to selected elements.
 5. Use `Export IFC` to include classification data in the IFC file.
+6. 
+If there are any problems, see the section for troubleshooting.
 
 ### Command Overview
 
@@ -91,9 +94,32 @@ After installation, the extension appears in the pyRevit ribbon.
 	- **Flat**: export only the selected class.
 	- **Full**: export the selected class and its parent hierarchy.
 
+## Technical Implementation
+
+This extension combines Revit Extensible Storage, shared parameters, and IFC export metadata to keep classification data stable in the model and transferable to IFC.
+
+### Extensible Storage (internal model data)
+
+- **Project-level API URL** (`DataDictionaryAPI` schema): stores the configured bSDD endpoint on `ProjectInformation`.
+- **Element-level classification** (`ExternalClassification` schema): stores a legacy single classification payload (`Code`, `Name`, `ClassUri`, `DictionaryName`, `DictionaryUri`) for backward compatibility.
+- **Element-level multi-classification** (`ExternalClassificationMulti` schema): stores multiple classification items as JSON (`ItemsJson`) per element.
+- **Element-level class properties** (`ExternalClassificationProperties` schema): stores class property sets as JSON (`PropertiesJson`) per element and per class URI.
+
+### Shared Parameters
+
+- The extension uses its own shared parameter definition file (`02_AddClassification.pushbutton/external_shared_params.txt`) for classification-related parameters.
+- During IFC export, built-in IFC shared parameters are resolved from Revit installation paths (for example `IFC Shared Parameters-RevitIFCBuiltIn_ALL.txt`) and bound to relevant categories when needed.
+
+### IFC Mapping Strategy
+
+- For IFC export, the tool prepares IFC classification metadata via an `IFCClassification` Extensible Storage schema on `DataStorage` elements.
+- These entries are used to map dictionary/system data to IFC `IfcClassification` and `IfcClassificationReference`.
+- Depending on export mode, references are written as either flat class links or hierarchical class chains (class plus ancestors).
+
 ## Troubleshooting
 
 - If the extension does not appear, restart Revit and check that the folder was copied to the pyRevit extensions directory.
+- If the click on a button throws an exception, close Revit, go to `C:\Users\[username]\AppData\Roaming\pyRevit\[version]` and delete the `pyRevit_version_..._pyRevitBundlesCreatorExtension.dll`. Then restart Revit.
 - If bSDD requests fail, check your internet connection or the configured API URL.
 - This extension is only intended for Revit 2024 and newer.
 

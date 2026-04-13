@@ -153,15 +153,6 @@
         "documentation": {}
     },
     {
-        "label": "sys",
-        "kind": 6,
-        "isExtraImport": true,
-        "importPath": "sys",
-        "description": "sys",
-        "detail": "sys",
-        "documentation": {}
-    },
-    {
         "label": "get_or_create_schema",
         "kind": 2,
         "importPath": "01_SetURL.pushbutton.script",
@@ -490,7 +481,7 @@
         "kind": 2,
         "importPath": "revit_compat",
         "description": "revit_compat",
-        "peekOfCode": "def get_revit_app_version():\n    \"\"\"\n    Return the major Revit version number.\n    Returns:\n        int: For example 2025, 2024, 2023, or 2022.\n    \"\"\"\n    try:\n        from Autodesk.Revit.ApplicationServices import Application\n        app_version = __revit__.Application.VersionNumber\n        # Format: \"2025.0.12345\" -> extract \"2025\"",
+        "peekOfCode": "def get_revit_app_version():\n    \"\"\"\n    Return the major Revit version number.\n    Returns:\n        int: For example 2025, 2024.\n    \"\"\"\n    try:\n        from Autodesk.Revit.ApplicationServices import Application\n        app_version = __revit__.Application.VersionNumber\n        # Format: \"2025.0.12345\" -> extract \"2025\"",
         "detail": "revit_compat",
         "documentation": {}
     },
@@ -508,7 +499,7 @@
         "kind": 2,
         "importPath": "revit_compat",
         "description": "revit_compat",
-        "peekOfCode": "def check_revit_version_compatible(min_version=2022, max_version=2025):\n    \"\"\"\n    Check whether the current Revit version is supported.\n    Args:\n        min_version: Minimum supported version.\n        max_version: Optional maximum supported version.\n    Returns:\n        tuple: (is_compatible: bool, version_info: str)\n    \"\"\"\n    current_version = get_revit_app_version()",
+        "peekOfCode": "def check_revit_version_compatible(min_version=2024):\n    \"\"\"\n    Check whether the current Revit version is supported.\n    Args:\n        min_version: Minimum supported version.\n    Returns:\n        tuple: (is_compatible: bool, version_info: str)\n    \"\"\"\n    current_version = get_revit_app_version()\n    if current_version is None:",
         "detail": "revit_compat",
         "documentation": {}
     },
@@ -517,7 +508,7 @@
         "kind": 2,
         "importPath": "revit_compat",
         "description": "revit_compat",
-        "peekOfCode": "def ensure_revit_version(min_version=2022):\n    \"\"\"\n    Validate the Revit version and show a warning if needed.\n    Args:\n        min_version: Minimum supported version.\n    Returns:\n        bool: True if the version is compatible.\n    \"\"\"\n    from pyrevit import forms\n    compatible, info = check_revit_version_compatible(min_version=min_version)",
+        "peekOfCode": "def ensure_revit_version(min_version=2024):\n    \"\"\"\n    Validate the Revit version and show a warning if needed.\n    Args:\n        min_version: Minimum supported version.\n    Returns:\n        bool: True if the version is compatible.\n    \"\"\"\n    from pyrevit import forms\n    compatible, info = check_revit_version_compatible(min_version=min_version)",
         "detail": "revit_compat",
         "documentation": {}
     },
