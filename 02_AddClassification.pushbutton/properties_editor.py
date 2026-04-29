@@ -42,7 +42,7 @@ def _normalize_for_json(obj):
 
 
 def _safe_json_dumps(obj):
-    """Dump JSON using ASCII-safe output to avoid encoding errors."""
+    """Dump JSON preserving Unicode characters for Revit storage."""
     def _ascii_text(value):
         txt = _safe_unicode(value)
         try:
@@ -74,10 +74,10 @@ def _safe_json_dumps(obj):
 
     try:
         normalized = _normalize_for_json(obj)
-        return _json.dumps(normalized, ensure_ascii=True)
+        return _json.dumps(normalized, ensure_ascii=False)
     except Exception:
         normalized_ascii = _normalize_ascii(obj)
-        return _json.dumps(normalized_ascii, ensure_ascii=True)
+        return _json.dumps(normalized_ascii, ensure_ascii=False)
 
 
 def _minimal_property_payload(property_data):
@@ -248,7 +248,7 @@ def store_class_properties(elem, class_uri, property_data):
                 json_text = _safe_json_dumps(fallback_props)
 
             try:
-                # json_text is ASCII-safe from ensure_ascii=True; avoid extra conversions.
+                # json_text is unicode JSON; avoid extra conversions.
                 stage = "entity-set"
                 entity.Set[System.String](prop_field, json_text)
                 stage = "entity-commit"
@@ -257,7 +257,7 @@ def store_class_properties(elem, class_uri, property_data):
             except Exception:
                 try:
                     stage = "entity-set-fallback"
-                    fallback_text = _json.dumps({class_key: _normalize_for_json(clean_payload)}, ensure_ascii=True)
+                    fallback_text = _json.dumps({class_key: _normalize_for_json(clean_payload)}, ensure_ascii=False)
                     entity.Set[System.String](prop_field, fallback_text)
                     stage = "entity-commit-fallback"
                     elem.SetEntity(entity)
@@ -272,7 +272,7 @@ def store_class_properties(elem, class_uri, property_data):
                     try:
                         stage = "entity-reset-write"
                         clean_entity = Entity(schema)
-                        clean_text = _json.dumps({class_key: _normalize_for_json(clean_payload)}, ensure_ascii=True)
+                        clean_text = _json.dumps({class_key: _normalize_for_json(clean_payload)}, ensure_ascii=False)
                         clean_entity.Set[System.String](prop_field, clean_text)
                         stage = "entity-reset-commit"
                         elem.SetEntity(clean_entity)

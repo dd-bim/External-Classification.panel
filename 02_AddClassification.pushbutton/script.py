@@ -72,7 +72,7 @@ def main():
                 return result
             return safe_unicode(item)
 
-        return _json.dumps(normalize(obj), ensure_ascii=True)
+        return _json.dumps(normalize(obj), ensure_ascii=False)
 
     def get_stored_url():
         schema = Schema.Lookup(System.Guid(_URL_SCHEMA_GUID_STR))

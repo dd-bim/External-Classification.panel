@@ -1,7 +1,45 @@
 # -*- coding: utf-8 -*-
 """Shared text and encoding helpers for external classification scripts."""
 
+import re
+
 text_type = type(u"")
+
+_unicode_char = globals().get("unichr", chr)
+
+
+_IFC_X1_RE = re.compile(r"\\X\\([0-9A-Fa-f]{2})\\")
+_IFC_X2_RE = re.compile(r"\\X2\\([0-9A-Fa-f]+)\\X0\\")
+
+
+def _decode_ifc_escape_block(block):
+    if not block:
+        return u""
+
+    if len(block) % 4 == 0 and len(block) >= 4:
+        chars = []
+        for idx in range(0, len(block), 4):
+            part = block[idx:idx + 4]
+            try:
+                chars.append(_unicode_char(int(part, 16)))
+            except Exception:
+                chars.append(u"?")
+        return u"".join(chars)
+
+    if len(block) % 2 == 0 and len(block) >= 2:
+        chars = []
+        for idx in range(0, len(block), 2):
+            part = block[idx:idx + 2]
+            try:
+                chars.append(chr(int(part, 16)).decode("cp1252"))
+            except Exception:
+                try:
+                    chars.append(chr(int(part, 16)).decode("latin-1"))
+                except Exception:
+                    chars.append(u"?")
+        return u"".join(chars)
+
+    return u""
 
 
 def safe_unicode(value):
@@ -63,6 +101,13 @@ def decode_escaped_text(value):
                 decoded = str(txt).decode("unicode_escape")
             if decoded:
                 txt = safe_unicode(decoded)
+    except Exception:
+        pass
+
+    try:
+        if "\\X2\\" in txt or "\\X\\" in txt:
+            txt = _IFC_X2_RE.sub(lambda m: _decode_ifc_escape_block(m.group(1)), txt)
+            txt = _IFC_X1_RE.sub(lambda m: _decode_ifc_escape_block(m.group(1)), txt)
     except Exception:
         pass
 

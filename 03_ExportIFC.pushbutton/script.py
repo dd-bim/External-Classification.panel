@@ -61,6 +61,7 @@ def main():
 
     safe_unicode = text_utils.safe_unicode
     safe_query_value = text_utils.safe_query_value
+    decode_escaped_text = text_utils.decode_escaped_text
     _ifc_literal_ascii = text_utils.ifc_literal_ascii
 
     doc = __revit__.ActiveUIDocument.Document
@@ -271,7 +272,7 @@ def main():
         if tok == "$":
             return ""
         if len(tok) >= 2 and tok[0] == "'" and tok[-1] == "'":
-            return tok[1:-1].replace("''", "'")
+            return decode_escaped_text(tok[1:-1].replace("''", "'"))
         return tok
 
     def split_ifc_args(arg_text):
@@ -984,6 +985,8 @@ def main():
             system_by_key[k] = sd
 
         existing_ref_by_key = {}
+        existing_ref_by_signature = {}
+        existing_ref_by_source = {}
         ref_line_regex = re.compile(r"^\s*#(\d+)\s*=\s*IFCCLASSIFICATIONREFERENCE\s*\((.*)\)\s*;\s*$", re.IGNORECASE)
         for line in content.splitlines():
             m = ref_line_regex.match(line)
@@ -994,10 +997,15 @@ def main():
             if len(args) < 4:
                 continue
             ref_uri = normalize_text(ifc_unquote(args[0]))
+            ref_code = normalize_text(ifc_unquote(args[1]))
+            ref_name = normalize_text(ifc_unquote(args[2]))
             src = args[3].strip()
             src_id = src.lstrip("#") if src.startswith("#") else src
             if ref_uri and src_id:
                 existing_ref_by_key[(ref_uri, src_id)] = ref_id
+            if src_id:
+                existing_ref_by_signature[(src_id, ref_code, ref_name)] = ref_id
+                existing_ref_by_source.setdefault(src_id, ref_id)
 
         existing_rel_pairs = set()
         rel_line_regex = re.compile(r"^\s*#(\d+)\s*=\s*IFCRELASSOCIATESCLASSIFICATION\s*\((.*)\)\s*;\s*$", re.IGNORECASE)
@@ -1090,6 +1098,23 @@ def main():
                     "name": safe_unicode(item.get("name", "")).strip(),
                 })
 
+                # Collapse consecutive nodes with identical visible identity.
+                # Some catalogs expose the same classification once via the
+                # dictionary URI and once via the class URI. In that case the
+                # later node is the real leaf and should replace the earlier one.
+                collapsed_chain = []
+                for node in chain:
+                    if collapsed_chain:
+                        prev = collapsed_chain[-1]
+                        if (
+                            normalize_text(prev.get("code", "")) == normalize_text(node.get("code", "")) and
+                            normalize_text(prev.get("name", "")) == normalize_text(node.get("name", ""))
+                        ):
+                            collapsed_chain[-1] = node
+                            continue
+                    collapsed_chain.append(node)
+                chain = collapsed_chain
+
                 chain_src = str(src_id)
                 leaf_ref_id = None
                 for node in chain:
@@ -1097,10 +1122,17 @@ def main():
                     if not node_uri:
                         continue
 
+                    node_code = normalize_text(node.get("code", ""))
+                    node_name = normalize_text(node.get("name", ""))
+
                     ref_key = (normalize_text(node_uri), chain_src)
                     ref_id = existing_ref_by_key.get(ref_key)
-
                     if not ref_id:
+                        ref_id = existing_ref_by_signature.get((chain_src, node_code, node_name))
+                    if not ref_id:
+                        ref_id = existing_ref_by_source.get(chain_src)
+
+                    if not ref_id and chain_src not in existing_ref_by_source:
                         ref_id = str(next_id)
                         next_id += 1
                         node_name = safe_unicode(node.get("name", "")).strip()
@@ -1115,6 +1147,8 @@ def main():
                             )
                         )
                         existing_ref_by_key[ref_key] = ref_id
+                        existing_ref_by_signature[(chain_src, node_code, node_name)] = ref_id
+                        existing_ref_by_source[chain_src] = ref_id
                         ref_count += 1
 
                     leaf_ref_id = ref_id

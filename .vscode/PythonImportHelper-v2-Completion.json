@@ -144,6 +144,15 @@
         "documentation": {}
     },
     {
+        "label": "re",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "re",
+        "description": "re",
+        "detail": "re",
+        "documentation": {}
+    },
+    {
         "label": "os",
         "kind": 6,
         "isExtraImport": true,
@@ -445,7 +454,34 @@
         "kind": 5,
         "importPath": "02_AddClassification.pushbutton.shared_text_utils",
         "description": "02_AddClassification.pushbutton.shared_text_utils",
-        "peekOfCode": "text_type = type(u\"\")\ndef safe_unicode(value):\n    try:\n        if value is None:\n            return u\"\"\n        try:\n            if isinstance(value, text_type):\n                return value\n        except Exception:\n            pass",
+        "peekOfCode": "text_type = type(u\"\")\n_unicode_char = globals().get(\"unichr\", chr)\n_IFC_X1_RE = re.compile(r\"\\\\X\\\\([0-9A-Fa-f]{2})\\\\\")\n_IFC_X2_RE = re.compile(r\"\\\\X2\\\\([0-9A-Fa-f]+)\\\\X0\\\\\")\ndef _decode_ifc_escape_block(block):\n    if not block:\n        return u\"\"\n    if len(block) % 4 == 0 and len(block) >= 4:\n        chars = []\n        for idx in range(0, len(block), 4):",
+        "detail": "02_AddClassification.pushbutton.shared_text_utils",
+        "documentation": {}
+    },
+    {
+        "label": "_unicode_char",
+        "kind": 5,
+        "importPath": "02_AddClassification.pushbutton.shared_text_utils",
+        "description": "02_AddClassification.pushbutton.shared_text_utils",
+        "peekOfCode": "_unicode_char = globals().get(\"unichr\", chr)\n_IFC_X1_RE = re.compile(r\"\\\\X\\\\([0-9A-Fa-f]{2})\\\\\")\n_IFC_X2_RE = re.compile(r\"\\\\X2\\\\([0-9A-Fa-f]+)\\\\X0\\\\\")\ndef _decode_ifc_escape_block(block):\n    if not block:\n        return u\"\"\n    if len(block) % 4 == 0 and len(block) >= 4:\n        chars = []\n        for idx in range(0, len(block), 4):\n            part = block[idx:idx + 4]",
+        "detail": "02_AddClassification.pushbutton.shared_text_utils",
+        "documentation": {}
+    },
+    {
+        "label": "_IFC_X1_RE",
+        "kind": 5,
+        "importPath": "02_AddClassification.pushbutton.shared_text_utils",
+        "description": "02_AddClassification.pushbutton.shared_text_utils",
+        "peekOfCode": "_IFC_X1_RE = re.compile(r\"\\\\X\\\\([0-9A-Fa-f]{2})\\\\\")\n_IFC_X2_RE = re.compile(r\"\\\\X2\\\\([0-9A-Fa-f]+)\\\\X0\\\\\")\ndef _decode_ifc_escape_block(block):\n    if not block:\n        return u\"\"\n    if len(block) % 4 == 0 and len(block) >= 4:\n        chars = []\n        for idx in range(0, len(block), 4):\n            part = block[idx:idx + 4]\n            try:",
+        "detail": "02_AddClassification.pushbutton.shared_text_utils",
+        "documentation": {}
+    },
+    {
+        "label": "_IFC_X2_RE",
+        "kind": 5,
+        "importPath": "02_AddClassification.pushbutton.shared_text_utils",
+        "description": "02_AddClassification.pushbutton.shared_text_utils",
+        "peekOfCode": "_IFC_X2_RE = re.compile(r\"\\\\X2\\\\([0-9A-Fa-f]+)\\\\X0\\\\\")\ndef _decode_ifc_escape_block(block):\n    if not block:\n        return u\"\"\n    if len(block) % 4 == 0 and len(block) >= 4:\n        chars = []\n        for idx in range(0, len(block), 4):\n            part = block[idx:idx + 4]\n            try:\n                chars.append(_unicode_char(int(part, 16)))",
         "detail": "02_AddClassification.pushbutton.shared_text_utils",
         "documentation": {}
     },
